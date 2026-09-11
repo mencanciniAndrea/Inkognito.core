@@ -12,9 +12,9 @@ namespace Inkognito.Core
             Planner = new MovePlanner();
         }
 
-        public IReadOnlyList<Plan> PlanMoves(GameState gameState, IEnumerable<MoveType> moveTypes)
+        public IReadOnlyList<Plan> PlanMoves(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
         {
-            return Planner.PlanMoves(gameState.Board, moveTypes, gameState.CurrentPlayer);
+            return Planner.PlanMoves(gameState.Board, moveTypes, gameState.CurrentPlayer, turnPhase);
         }
     }
 }

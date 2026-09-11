@@ -6,6 +6,7 @@ namespace Inkognito.Core
         Land,
         Water,
         LandOrWater,
-        Ambassador
+        Ambassador,
+        AnotherPlayerPawn
     }
 }

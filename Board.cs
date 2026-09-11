@@ -25,6 +25,11 @@ namespace Inkognito.Core
             AmbassadorPawn = ambassadorPawn;
         }
 
+        public bool CellIsEmpty(Cell cell)
+        {
+            return GetPawnsOnCell(cell).Count == 0;
+        }
+
         public IReadOnlyList<Pawn> GetPawnsOnCell(Cell cell)
         {
             if (cell is null)

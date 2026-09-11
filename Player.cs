@@ -54,7 +54,7 @@ namespace Inkognito.Core
 
                 // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
                 // se invece è CPU, si chiama il suo Brain
-                Brain.PlanMoves(gameState, AvailableMoves);
+                Brain.PlanMoves(gameState, AvailableMoves, TurnPhase.Move);
 
                 // fase 3: eseguite le mosse, si ottiene una lista di altri player a cui chiedere le informazioni.
                 // l'esecuzione delle mosse infatti è finalizzata ad ottenere questa lista oppure a spostare i propri pedoni.
