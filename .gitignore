@@ -1,0 +1,21 @@
+# Build .NET
+**/bin/
+**/obj/
+artifacts/
+
+# Impostazioni locali degli IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# Risultati dei test
+TestResults/
+coverage/
+
+# File locali
+.env
+.env.*
+!.env.example
+*.log
