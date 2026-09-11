@@ -16,5 +16,10 @@ namespace Inkognito.Core
         }
 
         internal void AddEdge(Edge edge) => edges.Add(edge);
+
+        public override string ToString()
+        {
+            return $"{Id}";
+        }
     }
 }

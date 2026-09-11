@@ -74,7 +74,7 @@ namespace Inkognito.Core
 
             Board = Board.LoadDefault();
 
-            AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.Cells.Single(cell => cell.Id == 33));
+            AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
             List<Pawn> pawns = new List<Pawn> { AmbassadorPawn};
@@ -101,7 +101,11 @@ namespace Inkognito.Core
             Players = Array.AsReadOnly(players);
             var occupiedSlots = Enumerable.Range(0, Players.Count)
                 .Where(index => Players[index] is not null).ToArray();
+
             CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
+            //TEST: partiamo sempre dallo yellow. Mi ha dato problemi con una configurazione di mosse WWA
+            CurrentPlayerIndex = 3;
+
 
             // Creazione del ProphecyPhantom
             prophecyPhantom = new ProphecyPhantom(random);
@@ -162,7 +166,7 @@ namespace Inkognito.Core
         {
             // check inutile, ma lo tengo per sicurezza
             if (color == PlayerColor.Black)
-                return new[] { new Pawn(color, Disguise.Ambassador, Board.Cells.Single(cell => cell.Id == 33)) };
+                return new[] { new Pawn(color, Disguise.Ambassador, Board.CellsById[33]) };
 
             int[] cellIds = color switch
             {
@@ -172,7 +176,7 @@ namespace Inkognito.Core
                 PlayerColor.Yellow => new[] { 10, 13, 37, 54 },
                 _ => throw new ArgumentOutOfRangeException(nameof(color))
             };
-            var remaining = cellIds.Select(id => Board.Cells.Single(cell => cell.Id == id)).ToList();
+            var remaining = cellIds.Select(id => Board.CellsById[id]).ToList();
             var disguises = new[] { Disguise.Tall, Disguise.Thin, Disguise.Fat, Disguise.Small };
             var pawns = new Pawn[disguises.Length];
             for (int i = 0; i < pawns.Length; i++)

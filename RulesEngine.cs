@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace Inkognito.Core
@@ -151,7 +152,6 @@ namespace Inkognito.Core
                         if (targetCellIsEmpty || (thereIsOnlyOnePawn && targetCellIsOccupiedByPawnOfCurrentPlayer)) 
                         {
                             moves.Add(new Move { Pawn = pawn, To = link.Travel(pawn.Position) });
-                            break; 
                         }
                     }
                     break;
@@ -160,7 +160,7 @@ namespace Inkognito.Core
                     // è l'unico caso di mossa che "salta" tutte le altre caselle
                     foreach (int i in cellIdsForAmbassadorToReturn)
                     {
-                        var targetCell = gameBoard.Cells.Single(cell => cell.Id == i);
+                        var targetCell = gameBoard.CellsById[i];
                         bool targetCellIsEmpty = gameBoard.CellIsEmpty(targetCell);
 
                         if (targetCellIsEmpty)
@@ -237,6 +237,21 @@ namespace Inkognito.Core
             }
 
             return legalMoves;
+        }
+
+        public static bool IsLegalPlan(Board gameBoard, Plan plan, Player currentPlayer, TurnPhase turnPhase)
+        {
+            // Implement the logic to check if a plan is legal
+            foreach (var pawn in gameBoard.Pawns)
+            {
+                // verificare che non ci siano più di due pedoni sulla stessa casella
+                var pawnsOnCell = gameBoard.GetPawnsOnCell(pawn.Position);
+                if (pawnsOnCell.Count > 2)
+                {
+                    return false;
+                }
+            }
+            return true; // Placeholder implementation
         }
     }
 }

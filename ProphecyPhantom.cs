@@ -32,6 +32,9 @@ namespace Inkognito.Core
                 moves[i] = remaining[index];
                 remaining.RemoveAt(index);
             }
+
+            // TEST
+            moves = new MoveType[] { MoveType.Water, MoveType.Water, MoveType.Ambassador };
             return Array.AsReadOnly(moves);
         }
     }

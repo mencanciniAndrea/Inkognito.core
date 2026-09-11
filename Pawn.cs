@@ -20,5 +20,10 @@ namespace Inkognito.Core
             Disguise = disguise;
             this.position = position ?? throw new ArgumentNullException(nameof(position));
         }
+
+        public override string ToString()
+        {
+            return $"{Disguise}-{Color}:{Position}";
+        }
     }
 }

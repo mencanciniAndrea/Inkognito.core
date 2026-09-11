@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
@@ -10,8 +11,9 @@ namespace Inkognito.Core
 {
     public sealed class Board
     {
-        public IReadOnlyList<Cell> Cells { get; }
-        public IReadOnlyList<Edge> Edges { get; }
+        public IReadOnlyDictionary<int, Cell> CellsById { get; }
+
+        public IReadOnlyDictionary<int, Edge> EdgesById { get; }
 
         public IReadOnlyList<Pawn> Pawns { get; set; }
 
@@ -19,8 +21,8 @@ namespace Inkognito.Core
 
         private Board(List<Cell> cells, List<Edge> edges, List<Pawn> pawns, Pawn ambassadorPawn)
         {
-            Cells = cells.AsReadOnly();
-            Edges = edges.AsReadOnly();
+            CellsById = cells.ToDictionary(cell => cell.Id);
+            EdgesById = edges.ToDictionary(edge => edge.Id);
             Pawns = pawns.AsReadOnly();
             AmbassadorPawn = ambassadorPawn;
         }
@@ -43,19 +45,45 @@ namespace Inkognito.Core
             return pawns;
         }
 
+        public void ApplyMove(Move move)
+        {
+            if (move is null)
+                throw new ArgumentNullException(nameof(move));
+            var pawns = GetPawnsOnCell(CellsById[move.Pawn.Position.Id]);
+            foreach (var pawn in pawns)
+            {
+                if (pawn.Color == move.Pawn.Color && pawn.Disguise == move.Pawn.Disguise)
+                {
+                    pawn.Position = CellsById[move.To.Id];
+                    break;
+                }
+            }
+        }
+
+        public void MovePawn(Pawn pawn, Cell to)
+        {
+            if (pawn is null)
+                throw new ArgumentNullException(nameof(pawn));
+            if (to is null)
+                throw new ArgumentNullException(nameof(to));
+            if (!Pawns.Contains(pawn))
+                throw new InvalidOperationException("Il pedone non appartiene al tabellone.");
+            pawn.Position = to;
+        }
+
         internal Board Clone()
         {
-            var cells = Cells.ToDictionary(cell => cell, cell => new Cell(cell.Id));
-            var edges = Edges.ToDictionary(edge => edge,
-                edge => new Edge(edge.Id, cells[edge.From], cells[edge.To], edge.Type));
-            var pawns = Pawns.ToDictionary(pawn => pawn, pawn => new Pawn(pawn.Color, pawn.Disguise, cells[pawn.Position]));
-            var ambassadorPawn = new Pawn(AmbassadorPawn.Color, AmbassadorPawn.Disguise, cells[AmbassadorPawn.Position]);
-            foreach (var cell in Cells)
-                foreach (var edge in cell.Edges)
-                    cells[cell].AddEdge(edges[edge]);
+            List<Pawn> pawns = new List<Pawn>();
+            var ambassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, CellsById[33]);
+            foreach (var pawn in Pawns)
+            {
+                pawns.Add(new Pawn(pawn.Color, pawn.Disguise, CellsById[pawn.Position.Id]));
+                if (pawn == AmbassadorPawn)
+                    ambassadorPawn = pawns.Last();
+            }
 
-            return new Board(Cells.Select(cell => cells[cell]).ToList(),
-                Edges.Select(edge => edges[edge]).ToList(), Pawns.Select(pawn => pawns[pawn]).ToList(), ambassadorPawn);
+            return new Board(CellsById.Values.ToList(),
+                EdgesById.Values.ToList(), pawns, ambassadorPawn);
         }
 
         public static Board LoadDefault()
@@ -165,6 +193,16 @@ namespace Inkognito.Core
                 int.TryParse(scalar.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
                 return value;
             throw new InvalidDataException("Atteso un identificativo o una versione intera.");
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var pawn in Pawns)
+            {
+                sb.AppendLine($"{pawn}");
+            }
+            return sb.ToString();
         }
     }
 }

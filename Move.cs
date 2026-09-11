@@ -9,5 +9,10 @@ namespace Inkognito.Core
         public Pawn Pawn { get;  set; }
         public Cell To { get; set; }
 
+        public override string ToString()
+        {
+            return $"Move {Pawn} to {To}";
+        }
+
     }
 }
