@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,6 +7,9 @@ namespace Inkognito.Core
 {
     public sealed class Player
     {
+
+        private readonly ILogger<Player> _logger;
+
         public string Name { get; }
         public PlayerType Type { get; internal set; } = PlayerType.Human;
         public PlayerColor Color { get; }
@@ -15,10 +19,10 @@ namespace Inkognito.Core
         public IReadOnlyList<Pawn> Pawns { get; }
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
-        public Brain Brain { get; internal set; } = null!;
+        public IBrain Brain { get; internal set; } = null!;
 
 
-        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, Mission mission, Pawn[] pawns)
+        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, Mission mission, Pawn[] pawns, ILoggerFactory loggerFactory)
         {
             Name = name;
             Color = color;
@@ -26,8 +30,11 @@ namespace Inkognito.Core
             Disguise = disguise;
             Mission = mission;
             Pawns = Array.AsReadOnly(pawns);
-            Brain = new Brain();
+            Brain = new LazyBrain(loggerFactory);
+            _logger = loggerFactory.CreateLogger<Player>();
         }
+
+       
 
         public void PlayTurn(GameState gameState)
         {
@@ -45,25 +52,59 @@ namespace Inkognito.Core
             {
                 // fase 1: recuperare le mosse disponibili per il giocatore corrente
                 AvailableMoves = gameState.prophecyPhantom.DrawMoves();
-                Console.Out.WriteLine($"Mosse disponibili:");
+                _logger.LogDebug($"Mosse disponibili:");
                 foreach (var move in AvailableMoves)
                 {
                     // qui si potrebbe fare un controllo per vedere se il giocatore ha abbastanza pedoni per fare la mossa, ma per ora lo facciamo dopo
-                    Console.Out.WriteLine($"{move},");
+                    _logger.LogDebug($"{move},");
                 }
 
                 // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
                 // se invece è CPU, si chiama il suo Brain
-                var plans = Brain.PlanMoves(gameState, AvailableMoves, TurnPhase.Move);
+                var plan = Brain.ChoosePlan(gameState, AvailableMoves, TurnPhase.Move);
 
-                
+                // TODO: applica le mosse alla game board.
+                _logger.LogDebug($"Applico le mosse del piano {plan}");
+                foreach ( var move in plan.Moves)
+                {
+                    gameState.Board.ApplyMove(move);
+                }
 
                 // fase 3: eseguite le mosse, si ottiene una lista di altri player a cui chiedere le informazioni.
                 // l'esecuzione delle mosse infatti è finalizzata ad ottenere questa lista oppure a spostare i propri pedoni.
+                List<Player> playerList = new List<Player>();
+                foreach ( var pawn in Pawns)
+                {
+                    Cell currentCell = pawn.Position;
+                    var pawns = gameState.Board.GetPawnsOnCell(currentCell);
+
+                    foreach(var p in pawns)
+                    {
+                        if (p.Color != Color)
+                        {
+                            if(p.Color == PlayerColor.Black)
+                            {
+                                // TODO verificare come gestire il discorso dell'ambasciatore. Devi scegliere un solo giocatore, a cui chiedere 2 carte invece che 3
+                            }
+                            else
+                            {
+                                var otherPlayer = gameState.GetPlayerByColor(Color);
+                                if (otherPlayer != null)
+                                    playerList.Add(otherPlayer);
+                            }
+                        }
+                    }
+                }
+
+                // Brainstorming: Secondo me qui si potrebbe fare tipo IssueRequest, e una Request può essere di tipo NORMAL o FROM_AMBASSADOR, per differenziare quante carte bisogna mostrare
+                // Una Request è caratterizzata da chi la fa, chi la riceve, quante carte bisogna scambiare.
 
                 // fase 4: se la lista di player a cui chiedere informazioni non è vuota, si chiede a ciascuno di loro le informazioni richieste del tipo richiesto
+                // TODO: chiedi informazioni ai giocatori, che ti daranno le loro carte
+                // TODO: prendi nota
 
                 // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
+                // TODO: chiudi il turno
             }
         }
     }

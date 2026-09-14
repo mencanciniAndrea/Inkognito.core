@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -35,6 +36,13 @@ namespace Inkognito.Core
 
         public GameState(string?[] playerNames, Random random)
         {
+            ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder
+                    .AddConsole()
+                    .SetMinimumLevel(LogLevel.Debug);
+            });
+
             // Controlli di validità dei parametri
             if (playerNames is null)
                 throw new ArgumentNullException(nameof(playerNames));
@@ -89,10 +97,10 @@ namespace Inkognito.Core
                 }
                 players[i] = colors[i] == PlayerColor.Black
                     ? new Player(playerName!, colors[i], Identity.A, Disguise.Ambassador, Mission.Zero,
-                        new[] { AmbassadorPawn })
+                        new[] { AmbassadorPawn }, loggerFactory)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),
-                        CreatePawns(colors[i], random));
+                        CreatePawns(colors[i], random), loggerFactory);
                 pawns.AddRange(players[i]!.Pawns);
             }
             Board.Pawns = pawns;
@@ -111,8 +119,15 @@ namespace Inkognito.Core
             prophecyPhantom = new ProphecyPhantom(random);
         }
 
-       
-        
+        public Player? GetPlayerByColor(PlayerColor color)
+        {
+            if(color == PlayerColor.Black)
+            {
+                //TODO! In questo caso bisogna restituire il giocatore ambasciatore
+            }
+            return Players.Single(p => p.Color == color);
+        }
+
         /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>
         public void PlayTurn()
         {

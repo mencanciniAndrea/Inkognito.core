@@ -1,12 +1,19 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Reflection;
 
 namespace Inkognito.Core
 {
     public class MovePlanner
     {
+        private readonly ILogger<MovePlanner> _logger;
+
+        public MovePlanner(ILoggerFactory factory)
+        {
+            
+            _logger = factory.CreateLogger<MovePlanner>();
+        }
 
         /// <summary>
         /// Questo metodo pianifica tutte le mosse per il giocatore corrente.
@@ -26,10 +33,10 @@ namespace Inkognito.Core
                 if (moveType == MoveType.Ambassador)
                 {
                     var moves = RulesEngine.GetLegalMoves(gameBoard.AmbassadorPawn, moveType, gameBoard, currentPlayer, turnPhase);
-                    Console.Out.WriteLine($"Planning moves for Ambassador:");
+                    _logger.LogDebug("Planning moves for Ambassador:");
                     foreach (var move in moves)
                     {
-                        Console.Out.WriteLine($"- Move Ambassador from {gameBoard.AmbassadorPawn.Position.Id} to {move.To.Id}");
+                        _logger.LogDebug($"- Move Ambassador from {gameBoard.AmbassadorPawn.Position.Id} to {move.To.Id}");
                     }
                     // Le mosse legali vengono calcolate correttamente. 
                     // Ora bisogna: generare una nuova board con l'applicazione della mossa, farsi dare le mosse legali per la nuova board con la nuova mossa e
@@ -39,10 +46,10 @@ namespace Inkognito.Core
                     {
                         var moves = RulesEngine.GetLegalMoves(pawn, moveType, gameBoard, currentPlayer, turnPhase);
 
-                        Console.Out.WriteLine($"Planning moves for pawn {pawn.Color} with disguise {pawn.Disguise} using move type {moveType}:");
+                        _logger.LogDebug($"Planning moves for pawn {pawn.Color} with disguise {pawn.Disguise} using move type {moveType}:");
                         foreach (var move in moves)
                         {
-                            Console.Out.WriteLine($"- Move {move.Pawn.Disguise} from {move.Pawn.Position.Id} to {move.To.Id} using move type {moveType}");
+                            _logger.LogDebug($"- Move {move.Pawn.Disguise} from {move.Pawn.Position.Id} to {move.To.Id} using move type {moveType}");
                         }
                     }
                 }
@@ -127,7 +134,7 @@ namespace Inkognito.Core
 
         public IReadOnlyList<Plan> ComposePlans(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer, TurnPhase turnPhase)
         {
-            List<Plan> result = new List<Plan>();
+            List<Plan> candidatePlans = new List<Plan>();
 
             foreach (var moveType in moveTypes)
             {
@@ -136,7 +143,7 @@ namespace Inkognito.Core
                     continue;
                 }
                 
-                if (result.Count == 0)
+                if (candidatePlans.Count == 0)
                 {
                     var legalMoves = GenerateLegalMoves(gameBoard, moveType, currentPlayer, turnPhase);
                     foreach (var move in legalMoves)
@@ -145,13 +152,13 @@ namespace Inkognito.Core
                         plan.Moves.Add(move);
                         plan.resultingBoard = gameBoard.Clone();
                         plan.resultingBoard.ApplyMove(move);
-                        result.Add(plan);
+                        candidatePlans.Add(plan);
                     }
                 }
                 else
                 {
                     List<Plan> newPlans = new List<Plan>();
-                    foreach (var existingPlan in result)
+                    foreach (var existingPlan in candidatePlans)
                     {
                         Board newBoard = existingPlan.resultingBoard.Clone();
                         var legalMoves = GenerateLegalMoves(newBoard, moveType, currentPlayer, turnPhase);
@@ -170,12 +177,27 @@ namespace Inkognito.Core
                             newPlans.Add(newPlan);
                         }
                     }
-                    result = newPlans;
+                    candidatePlans = newPlans;
                 }
                 
             }
-            
-            return result;
+
+
+            // ultimo passaggio: il RulesEgine scarta i piani che non sono legali
+            List<Plan> result = new List<Plan>();
+            foreach (var plan in candidatePlans)
+            {
+                if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, turnPhase))
+                {
+                    result.Add(plan);
+                }
+                else
+                {
+                    _logger.LogDebug($"DEBUG: Plan not legal: {plan}");
+                }
+            }
+
+            return candidatePlans;
         }
     }
 }

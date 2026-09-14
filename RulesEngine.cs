@@ -37,7 +37,7 @@ namespace Inkognito.Core
                                 var pawnsOnNextCell = gameBoard.GetPawnsOnCell(nextTarget);
                                 if (pawnsOnNextCell.Count == 0)
                                 {
-                                    legalMoves.Add(new Move { Pawn = pawn, To = nextTarget });
+                                    legalMoves.Add(new Move { Pawn = pawn, To = nextTarget, Jumping = target, Via = nextLink});
                                 }
                             }
                         }
@@ -239,9 +239,30 @@ namespace Inkognito.Core
             return legalMoves;
         }
 
-        public static bool IsLegalPlan(Board gameBoard, Plan plan, Player currentPlayer, TurnPhase turnPhase)
+        /// <summary>
+        /// Ci sono 2 regole principali per stabilire se una gameboard è in uno stato legale nella fase MOVE:
+        /// 1. Non ci possono essere più di 2 pedine su una stessa casella
+        /// 2. il giocatore corrente non può incontrare più di 1 volta ciascun giocatore
+        /// </summary>
+        /// <param name="gameBoard"></param>
+        /// <param name="currentPlayer"></param>
+        /// <param name="turnPhase"></param>
+        /// <returns></returns>
+        public static bool IsGameBoardStateLegal(Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
         {
-            // Implement the logic to check if a plan is legal
+            switch (turnPhase)
+            {
+                case TurnPhase.Move:
+                case TurnPhase.InfoGathering:
+                        return verifyBoardStateAtMovePhase(gameBoard, currentPlayer);
+                case TurnPhase.Departure:
+                    return verifyBoardStateAtDepartureState(gameBoard, currentPlayer);
+            }
+            return true;
+        }
+
+        private static bool verifyBoardStateAtDepartureState(Board gameBoard, Player currentPlayer)
+        {
             foreach (var pawn in gameBoard.Pawns)
             {
                 // verificare che non ci siano più di due pedoni sulla stessa casella
@@ -251,7 +272,45 @@ namespace Inkognito.Core
                     return false;
                 }
             }
-            return true; // Placeholder implementation
+            return true;
+        }
+
+        private static bool verifyBoardStateAtMovePhase(Board gameBoard, Player currentPlayer)
+        {
+            int[] otherPlayerSeenCount = new int[4]; // nell'ordine: Red, Blue, Green, Yellow
+
+            // Implement the logic to check if a plan is legal
+            foreach (var pawn in gameBoard.Pawns)
+            {
+                if(pawn.Color != currentPlayer.Color)
+                {
+                    continue;
+                }
+                // verificare che non ci siano più di due pedoni sulla stessa casella
+                var pawnsOnCell = gameBoard.GetPawnsOnCell(pawn.Position);
+                if (pawnsOnCell.Count > 2)
+                {
+                    return false;
+                }
+                // Il plan non è legale se il giocatore corrente finisce con più di uno dei suoi pawn sui pawn di un altro giocatore (un giocatore può essere interrogato solo una volta in un turno da un altro giocatore )
+
+                if (pawnsOnCell.Count > 1)
+                {
+                    foreach (var p in pawnsOnCell)
+                    {
+                        if (p.Color != currentPlayer.Color && p.Color != PlayerColor.Black)
+                        {
+                            otherPlayerSeenCount[(int)p.Color]++;
+                            if (otherPlayerSeenCount[(int)p.Color] > 1)
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }

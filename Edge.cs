@@ -24,5 +24,10 @@ namespace Inkognito.Core
             throw new ArgumentException("The provided cell is not connected by this edge.", nameof(from));
 
         }
+
+        public override string ToString()
+        {
+            return $"{From}-{Type}-{To} ({Id})";
+        }
     }
 }

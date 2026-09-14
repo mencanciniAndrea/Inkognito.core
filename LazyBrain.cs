@@ -1,19 +1,20 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
 
 namespace Inkognito.Core
 {
-    public class Brain
+    public class LazyBrain : IBrain
     {
         public MovePlanner Planner { get; set; } = null!;
-        public Brain()
+        public LazyBrain(ILoggerFactory factory)
         {
-            Planner = new MovePlanner();
+            Planner = new MovePlanner(factory);
         }
 
-        public Plan PlanMoves(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
+        public Plan ChoosePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
         {
             var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, gameState.CurrentPlayer, turnPhase);
 
@@ -23,7 +24,7 @@ namespace Inkognito.Core
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
-                if (RulesEngine.IsLegalPlan(gameState.Board, plan, gameState.CurrentPlayer, turnPhase))
+                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, turnPhase))
                 {
                     Console.Out.WriteLine($"Piano disponibile: {plan}");
 
@@ -50,7 +51,6 @@ namespace Inkognito.Core
                 }
             }
 
-            // super dummy... bisogna implementare una logica di valutazione dei piani per scegliere il migliore
             return plausiblePlans[0];
         }
     }
