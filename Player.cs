@@ -70,9 +70,11 @@ namespace Inkognito.Core
                     gameState.Board.ApplyMove(move);
                 }
 
-                // fase 3: eseguite le mosse, si ottiene una lista di altri player a cui chiedere le informazioni.
+                // fase 3: eseguite le mosse, si ottiene una lista di altri pedoni a cui chiedere le informazioni.
                 // l'esecuzione delle mosse infatti è finalizzata ad ottenere questa lista oppure a spostare i propri pedoni.
-                List<Player> playerList = new List<Player>();
+
+                // Nota: può contenere l'ambasciatore e pedine colorate. Massimo 3, ma è un dettaglio
+                List<Pawn> pawnList = new List<Pawn>();
                 foreach ( var pawn in Pawns)
                 {
                     Cell currentCell = pawn.Position;
@@ -82,20 +84,19 @@ namespace Inkognito.Core
                     {
                         if (p.Color != Color)
                         {
-                            if(p.Color == PlayerColor.Black)
-                            {
-                                // TODO verificare come gestire il discorso dell'ambasciatore. Devi scegliere un solo giocatore, a cui chiedere 2 carte invece che 3
-                            }
-                            else
-                            {
-                                var otherPlayer = gameState.GetPlayerByColor(Color);
-                                if (otherPlayer != null)
-                                    playerList.Add(otherPlayer);
-                            }
+                            pawnList.Add(p);
                         }
                     }
                 }
 
+                // Sort pawnList!
+                // questo passaggio è importante, ed è definito dal Brain: Infatti, solo lui sa come ordinare la lista dei pawn da interrogare.
+                // Inoltre, l'ordine di interrogazione è fondamentale per non perdere tempo in certi casi.
+                // L'ordinamento tuttavia, dipende dalla conoscenza del Player, che potrebbe tranquillamente risiedere nel Brain, se si vuole
+                // fare in modo che il Brain sia il centro anche della memoria (cosa che normalmente è in un essere umano normale...)
+
+                // Soluzione delle ipotesi e della knowledge: Fare tutte le combinazioni possibili su identità e travestimento di un giocatore:
+                // (Z, alto) (Z, basso)... e poi eliminare quelle combinazioni che rendono falsa una eventuale risposta data con le carte
                 // Brainstorming: Secondo me qui si potrebbe fare tipo IssueRequest, e una Request può essere di tipo NORMAL o FROM_AMBASSADOR, per differenziare quante carte bisogna mostrare
                 // Una Request è caratterizzata da chi la fa, chi la riceve, quante carte bisogna scambiare.
 
