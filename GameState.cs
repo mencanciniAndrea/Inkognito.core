@@ -96,7 +96,7 @@ namespace Inkognito.Core
                     continue;
                 }
                 players[i] = colors[i] == PlayerColor.Black
-                    ? new Player(playerName!, colors[i], Identity.A, Disguise.Ambassador, Mission.Zero,
+                    ? new Player(playerName!, colors[i], Identity.A, Disguise.Ambassador, Mission.FindAllIdentities,
                         new[] { AmbassadorPawn }, loggerFactory)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),

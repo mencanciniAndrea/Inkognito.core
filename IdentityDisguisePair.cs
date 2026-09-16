@@ -6,8 +6,8 @@ namespace Inkognito.Core
 {
     public class IdentityDisguisePair
     {
-        Identity Identity { get; set; }
+        public Identity Identity { get; set; }
 
-        Disguise Disguise { get; set; }
+        public Disguise Disguise { get; set; }
     }
 }

@@ -6,6 +6,7 @@ namespace Inkognito.Core
         F,
         B,
         X,
-        Z
+        Z,
+        DON_T_KNOW // valore speciale valido solo per PlayerKnowledge
     }
 }

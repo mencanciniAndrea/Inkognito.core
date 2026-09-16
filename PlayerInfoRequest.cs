@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Inkognito.Core
 {
-    internal class PlayerInfoRequest
+    public class PlayerInfoRequest
     {
     }
 }

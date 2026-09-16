@@ -6,6 +6,7 @@ namespace Inkognito.Core
         Tall,
         Thin,
         Fat,
-        Small
+        Small,
+        DON_T_KNOW // valore speciale valido solo per PlayerKnowledge
     }
 }

@@ -2,10 +2,11 @@ namespace Inkognito.Core
 {
     public enum Mission
     {
-        Zero,
+        FindAllIdentities,
         Alfa,
         Bravo,
         Charlie,
-        Delta
+        Delta,
+        DON_T_KNOW
     }
 }
