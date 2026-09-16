@@ -21,6 +21,8 @@ namespace Inkognito.Core
 
         public IBrain Brain { get; internal set; } = null!;
 
+        public PlayerMemory Memory { get; internal set; } = null;
+
 
         internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, Mission mission, Pawn[] pawns, ILoggerFactory loggerFactory)
         {
@@ -32,6 +34,11 @@ namespace Inkognito.Core
             Pawns = Array.AsReadOnly(pawns);
             Brain = new LazyBrain(loggerFactory);
             _logger = loggerFactory.CreateLogger<Player>();
+        }
+
+        public void InitMemory(List<Player> allPlayers)
+        {
+            Memory = new PlayerMemory(allPlayers.Where(p => p.Color != Color));
         }
 
        
