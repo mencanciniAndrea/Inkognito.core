@@ -2,10 +2,10 @@ namespace Inkognito.Core
 {
     public enum PlayerColor
     {
-        Red,
-        Blue,
-        Green,
-        Yellow,
-        Black
+        Black = 0,
+        Red = 1,
+        Blue = 2,
+        Green = 3,
+        Yellow = 4
     }
 }

@@ -2,7 +2,7 @@ namespace Inkognito.Core
 {
     public enum PlayerType
     {
-        Human,
-        CPU
+        Human = 0,
+        CPU = 1
     }
 }

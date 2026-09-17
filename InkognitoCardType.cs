@@ -6,9 +6,9 @@ namespace Inkognito.Core
 {
     public enum InkognitoCardType
     {
-        SECRET_CARD,
-        PUBLIC_CARD,
-        MISSION_CARD,
-        PLAYER_START_CARD
+        IDENTITY = 0,
+        DISGUISE = 1,
+        MISSION = 2,
+        PLAYER_START = 4
     }
 }

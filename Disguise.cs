@@ -2,11 +2,11 @@ namespace Inkognito.Core
 {
     public enum Disguise
     {
-        Ambassador,
-        Tall,
-        Thin,
-        Fat,
-        Small,
-        DON_T_KNOW // valore speciale valido solo per PlayerKnowledge
+        Ambassador = 0,
+        Tall = 1,
+        Thin = 2,
+        Fat = 3,
+        Small = 4,
+        DON_T_KNOW = 5 // valore speciale valido solo per PlayerKnowledge
     }
 }
