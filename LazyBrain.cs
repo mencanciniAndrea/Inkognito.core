@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Inkognito.Core
 {
@@ -52,6 +53,21 @@ namespace Inkognito.Core
             }
 
             return plausiblePlans[0];
+        }
+
+        public IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory? memory)
+        {
+            // il lazy brain non fa niente. Come viene viene.
+            return originalPawnList;
+        }
+
+        public RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory)
+        {
+            // se non conosci l'identità di questo signore, chiedigliela
+            var (identity, disguise, mission) = memory.GetKnownPlayerDetails(pColor);
+            if (identity == Identity.DON_T_KNOW) return RequestType.IDENTITY;
+            else if (disguise == Disguise.DON_T_KNOW) return RequestType.DISGUISE;
+            return RequestType.IDENTITY;
         }
     }
 }

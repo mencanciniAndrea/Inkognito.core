@@ -16,6 +16,8 @@ namespace Inkognito.Core
         /// <summary>Indice del posto corrente nella lista Players, inclusi i posti vuoti.</summary>
         public int CurrentPlayerIndex { get; private set; }
         public Player CurrentPlayer => Players[CurrentPlayerIndex]!;
+
+        public Player AmbassadorPlayer { get; private set; }
         /// <summary>Cinque posti: Red, Blue, Green, Yellow, Black. I posti assenti sono null.</summary>
         public IReadOnlyList<Player?> Players { get; }
         /// <summary>Seed della partita; null se viene fornito direttamente un Random esterno.</summary>
@@ -96,8 +98,7 @@ namespace Inkognito.Core
                     continue;
                 }
                 players[i] = colors[i] == PlayerColor.Black
-                    ? new Player(playerName!, colors[i], Identity.A, Disguise.Ambassador, Mission.FindAllIdentities,
-                        new[] { AmbassadorPawn }, loggerFactory)
+                    ? CreateAmbassadorPlayer(playerName!, loggerFactory)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),
                         CreatePawns(colors[i], random), loggerFactory);
@@ -111,21 +112,26 @@ namespace Inkognito.Core
                 .Where(index => Players[index] is not null).ToArray();
 
             CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
-            //TEST: partiamo sempre dallo yellow. Mi ha dato problemi con una configurazione di mosse WWA
-            CurrentPlayerIndex = 3;
-
 
             // Creazione del ProphecyPhantom
             prophecyPhantom = new ProphecyPhantom(random);
+        }
+
+        private Player CreateAmbassadorPlayer(string name, ILoggerFactory loggerFactory)
+        {
+            AmbassadorPlayer = new Player(name, PlayerColor.Black, Identity.A, Disguise.Ambassador, Mission.FindAllIdentities,
+                        new[] { AmbassadorPawn }, loggerFactory);
+            return AmbassadorPlayer;
         }
 
         public Player? GetPlayerByColor(PlayerColor color)
         {
             if(color == PlayerColor.Black)
             {
-                //TODO! In questo caso bisogna restituire il giocatore ambasciatore
+                return AmbassadorPlayer;
             }
-            return Players.Single(p => p.Color == color);
+
+            return Players.Single(p => p != null && p.Color == color);
         }
 
         /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>

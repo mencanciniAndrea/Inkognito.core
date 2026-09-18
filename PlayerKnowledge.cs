@@ -8,7 +8,7 @@ namespace Inkognito.Core
 {
     public class PlayerKnowledge
     {
-        PlayerColor About { get; }
+        public PlayerColor About { get; }
 
         List<PlayerAnswer> AnswersReceived { get; }
 
@@ -16,11 +16,11 @@ namespace Inkognito.Core
 
         List<IdentityDisguisePair> PossibleInfo { get; }
 
-        Identity AssuredIdentity { get; }
+        public Identity AssuredIdentity { get; }
 
-        Disguise AssuredDisguise { get; }
+        public Disguise AssuredDisguise { get; }
 
-        Mission AssignedMission { get; }
+        public Mission AssignedMission { get; }
 
         public PlayerKnowledge(PlayerColor p, Player me)
         {

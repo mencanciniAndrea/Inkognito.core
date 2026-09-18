@@ -277,7 +277,7 @@ namespace Inkognito.Core
 
         private static bool verifyBoardStateAtMovePhase(Board gameBoard, Player currentPlayer)
         {
-            int[] otherPlayerSeenCount = new int[4]; // nell'ordine: Red, Blue, Green, Yellow
+            int[] otherPlayerSeenCount = new int[5]; // nell'ordine: Black, Red, Blue, Green, Yellow
 
             // Implement the logic to check if a plan is legal
             foreach (var pawn in gameBoard.Pawns)

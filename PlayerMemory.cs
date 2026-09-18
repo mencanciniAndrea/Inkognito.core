@@ -8,13 +8,26 @@ namespace Inkognito.Core
     {
         List<PlayerKnowledge> knowledgeAboutOtherPlayers { get; }
 
-        public PlayerMemory(IEnumerable<Player> otherPlayers)
+        public PlayerMemory(IEnumerable<Player> otherPlayers, Player me)
         {
             knowledgeAboutOtherPlayers = new List<PlayerKnowledge>();
             foreach(Player p in otherPlayers)
             {
-                knowledgeAboutOtherPlayers.Add(new PlayerKnowledge(p));
+                if (p != me) knowledgeAboutOtherPlayers.Add(new PlayerKnowledge(p.Color, me));
             }
         }
+
+        public (Identity, Disguise, Mission) GetKnownPlayerDetails(PlayerColor pColor)
+        {
+            foreach(PlayerKnowledge k in knowledgeAboutOtherPlayers)
+            {
+                if (k.About == pColor)
+                {
+                    return (k.AssuredIdentity, k.AssuredDisguise, k.AssignedMission);
+                }
+            }
+            return (Identity.DON_T_KNOW, Disguise.DON_T_KNOW, Mission.DON_T_KNOW);
+        }
+
     }
 }

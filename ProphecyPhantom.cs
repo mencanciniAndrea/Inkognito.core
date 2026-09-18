@@ -59,7 +59,6 @@ namespace Inkognito.Core
                 default:
                     throw new ArgumentException("Ruleset non supportato!");
             }
-            
         }
     }
 }
