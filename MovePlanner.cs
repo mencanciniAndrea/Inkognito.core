@@ -23,6 +23,7 @@ namespace Inkognito.Core
         /// <param name="currentPlayer">Il giocatore corrente per il quale pianificare le mosse.</param>
         /// <returns>Una lista di piani di mosse possibili. </returns>
         /// lo lasciamo per ora, ma non viene usato
+        /*
         public IReadOnlyList<Plan> PlanMoves(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer, TurnPhase turnPhase)
         {
             List<Plan> plans = new List<Plan>();
@@ -64,6 +65,7 @@ namespace Inkognito.Core
             // This is a placeholder implementation and should be replaced with actual planning logic.
             return plans;
         }
+        */
 
         private IReadOnlyList<IReadOnlyList<MoveType>> GenerateMoveTypeCombinations(MoveType [] moveTypes)
         {
@@ -99,6 +101,14 @@ namespace Inkognito.Core
             return allPlans;
         }
 
+        /// <summary>
+        /// Restituisce una lista di mosse legali data una gameboard, il movetype, il currentplayer e la turnphase
+        /// </summary>
+        /// <param name="gameBoard"></param>
+        /// <param name="moveType"></param>
+        /// <param name="currentPlayer"></param>
+        /// <param name="turnPhase"></param>
+        /// <returns></returns>
         public IReadOnlyList<Move> GenerateLegalMoves(Board gameBoard, MoveType moveType, Player currentPlayer, TurnPhase turnPhase)
         {
             List<Move> legalMoves = new List<Move>();
@@ -132,6 +142,14 @@ namespace Inkognito.Core
             return legalMoves;
         }
 
+        /// <summary>
+        /// Restituisce tutti i piani possibili date le 3 mosse
+        /// </summary>
+        /// <param name="gameBoard"></param>
+        /// <param name="moveTypes"></param>
+        /// <param name="currentPlayer"></param>
+        /// <param name="turnPhase"></param>
+        /// <returns></returns>
         public IReadOnlyList<Plan> ComposePlans(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer, TurnPhase turnPhase)
         {
             List<Plan> candidatePlans = new List<Plan>();
@@ -177,7 +195,9 @@ namespace Inkognito.Core
                             newPlans.Add(newPlan);
                         }
                     }
-                    candidatePlans = newPlans;
+                    //candidatePlans = newPlans;    // --> questo eliminava tutti i piani precedenti, quelli da una mossa o da due.
+                                                    // invece dobbiamo tenerli tutti, perché non sei obbligato a usare tutte le mosse.
+                    candidatePlans.AddRange(newPlans);
                 }
                 
             }

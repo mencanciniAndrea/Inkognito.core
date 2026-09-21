@@ -22,34 +22,42 @@ namespace Inkognito.Core
             Console.Out.WriteLine($"Numero di piani possibili: {possiblePlans.Count}");
 
             var plausiblePlans = new List<Plan>();
+            int i = 1;
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
                 if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, turnPhase))
                 {
-                    Console.Out.WriteLine($"Piano disponibile: {plan}");
+                    Console.Out.WriteLine($"Piano #{i}: {plan}");
 
                     // controllare che il piano non ti faccia tornare da dove sei partito e che non ti faccia tornare su una casella già visitata
                     HashSet<int> visitedCells = new HashSet<int>();
-                    plausiblePlans.Add(plan);
 
-                    plan.Moves.ForEach(move =>
+                    bool dummyPlan = false;
+
+                    foreach(var move in plan.Moves)
                     {
                         if (visitedCells.Contains(move.To.Id))
                         {
                             Console.Out.WriteLine($"Piano dummy. Casella già visitata: {move.To.Id}");
-                            plausiblePlans.Remove(plan);
+                            dummyPlan = true;
                         }
                         else
                         {
                             visitedCells.Add(move.To.Id);
                         }
-                    });
+                    }
+
+                    if (!dummyPlan)
+                    {
+                        plausiblePlans.Add(plan);
+                    }
                 }
                 else
                 {
                     Console.Out.WriteLine($"Piano non legale: {plan}");
                 }
+                i++;
             }
 
             return plausiblePlans[0];
