@@ -48,12 +48,13 @@ namespace Inkognito.Core
                         MoveType.Ambassador, MoveType.Ambassador
                     };
                 case Ruleset.RULESET_2022:
+                    // Finalmente ho trovato: sono 2 di ogni tipo!
                     return  new List<MoveType>
                     {
-                        MoveType.Land, MoveType.Land, MoveType.Land,
-                        MoveType.Water, MoveType.Water, MoveType.Water,
-                        MoveType.LandOrWater,
-                        MoveType.AnotherPlayerPawn,
+                        MoveType.Land, MoveType.Land, 
+                        MoveType.Water, MoveType.Water,
+                        MoveType.LandOrWater, MoveType.LandOrWater,
+                        MoveType.AnotherPlayerPawn, MoveType.AnotherPlayerPawn,
                         MoveType.Ambassador, MoveType.Ambassador
                     };
                 default:
