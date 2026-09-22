@@ -16,12 +16,33 @@ namespace Inkognito.Core
             VictoryConditions = v;
         }
 
-        public static Mission getMissionForFB(MissionPart mF, MissionPart mB, GameState g)
+
+        public static Mission GetMissionForPlayerForAlone(Identity id)
         {
-            switch(mF)
+
+            Pawn p = g.GetPawnOf(id) ?? throw new ArgumentNullException($"{id} non può essere null a questo punto!");
+            switch (id)
+            {
+                case Identity.F:
+                    return new Mission("Andate alla casella 5", new List<VictoryCondition> { new(p, TargetPosition.POSITION_5) });
+                case Identity.B:
+                    return new Mission("Andate alla casella 1", new List<VictoryCondition> { new(p, TargetPosition.POSITION_1) });
+                case Identity.X:
+                    return new Mission("Andate alla casella 6", new List<VictoryCondition> { new(p, TargetPosition.POSITION_6) });
+                case Identity.Z:
+                    return new Mission("Andate alla casella 4", new List<VictoryCondition> { new(p, TargetPosition.POSITION_4) });
+                default:
+                    return new Mission("Unkown", new List<VictoryCondition> {});
+            }
+        }
+
+
+        public static Mission GetMissionForFB(MissionPart mF, MissionPart mB, GameState g)
+        {
+            switch (mF)
             {
                 case MissionPart.Alfa:
-                    switch(mB)
+                    switch (mB)
                     {
                         case MissionPart.Bravo:
                             return new Mission("Andate su X con qualunque pedina",F_A_B_B(g));
@@ -129,22 +150,23 @@ namespace Inkognito.Core
             }    
         }
 
-        /// <summary>
-        /// restituisce 8 condizioni di vittoria, una per ciascun pawn di F o B, che devono essere sulla posizione di Mister X
-        /// </summary>
-        /// <param name="g"></param>
-        /// <returns></returns>
         private static List<VictoryCondition> F_A_B_B(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
 
-            foreach(Player p in g.Players)
+            TargetPosition t = TargetPosition.X_POSITION;
+            Pawn? xPawn = g.GetPawnOf(Identity.X);
+            if(xPawn == null)
+                t = TargetPosition.Z_POSITION;
+
+
+            foreach (Player p in g.Players)
             {
                 if(p.Identity == Identity.F || p.Identity == Identity.B)
                 {
                     foreach(Pawn pa in p.Pawns)
                     {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.X_POSITION));
+                        vc.Add(new VictoryCondition(pa, t));
                     }
                 }
             }
@@ -164,13 +186,18 @@ namespace Inkognito.Core
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
 
+            TargetPosition t = TargetPosition.Z_POSITION;
+            Pawn? xPawn = g.GetPawnOf(Identity.Z);
+            if (xPawn == null)
+                t = TargetPosition.X_POSITION;
+
             foreach (Player p in g.Players)
             {
                 if (p.Identity == Identity.F || p.Identity == Identity.B)
                 {
                     foreach (Pawn pa in p.Pawns)
                     {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.Z_POSITION));
+                        vc.Add(new VictoryCondition(pa, t));
                     }
                 }
             }
@@ -258,13 +285,18 @@ namespace Inkognito.Core
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
 
+            TargetPosition t = TargetPosition.B_POSITION;
+            Pawn? xPawn = g.GetPawnOf(Identity.B);
+            if (xPawn == null)
+                t = TargetPosition.F_POSITION;
+
             foreach (Player p in g.Players)
             {
                 if (p.Identity == Identity.Z || p.Identity == Identity.X)
                 {
                     foreach (Pawn pa in p.Pawns)
                     {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.B_POSITION));
+                        vc.Add(new VictoryCondition(pa, t));
                     }
                 }
             }
@@ -294,13 +326,18 @@ namespace Inkognito.Core
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
 
+            TargetPosition t = TargetPosition.F_POSITION;
+            Pawn? xPawn = g.GetPawnOf(Identity.F);
+            if (xPawn == null)
+                t = TargetPosition.B_POSITION;
+
             foreach (Player p in g.Players)
             {
                 if (p.Identity == Identity.Z || p.Identity == Identity.X)
                 {
                     foreach (Pawn pa in p.Pawns)
                     {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.F_POSITION));
+                        vc.Add(new VictoryCondition(pa, t));
                     }
                 }
             }
