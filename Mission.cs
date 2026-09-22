@@ -16,8 +16,7 @@ namespace Inkognito.Core
             VictoryConditions = v;
         }
 
-
-        public static Mission GetMissionForPlayerForAlone(Identity id)
+        public static Mission GetMissionForPlayerForAlone(Identity id, GameState g)
         {
 
             Pawn p = g.GetPawnOf(id) ?? throw new ArgumentNullException($"{id} non può essere null a questo punto!");
@@ -69,7 +68,7 @@ namespace Inkognito.Core
                     switch (mB)
                     {
                         case MissionPart.Alfa:
-                            return new Mission("Portate F sulla casella 7",  F_C_B_A(g) );
+                            return new Mission("Portate F sulla casella 7 (41)",  F_C_B_A(g) );
                         case MissionPart.Bravo:
                             return new Mission("Andate su A con qualunque pedina", F_B_B_C(g) );
                         case MissionPart.Delta:
@@ -85,7 +84,7 @@ namespace Inkognito.Core
                         case MissionPart.Bravo:
                             return new Mission( "portate F su B o B su F", F_D_B_B(g) );
                         case MissionPart.Charlie:
-                            return new Mission( "portate l'ambasciatore alla casella 8",  F_D_B_C(g) );
+                            return new Mission( "portate l'ambasciatore alla casella 8 (45)",  F_D_B_C(g) );
                         default:
                             return new Mission("Mission Unknown", new List<VictoryCondition>());
                     }
@@ -141,7 +140,7 @@ namespace Inkognito.Core
                         case MissionPart.Bravo:
                             return new Mission("Andate su F con qualunque pedina", Z_B_X_D(g) );
                         case MissionPart.Charlie:
-                            return new Mission("portate X su 6", Z_D_X_C(g) );
+                            return new Mission("portate X su 6 (4)", Z_D_X_C(g) );
                         default:
                             return new Mission("Mission Unknown", new List<VictoryCondition>());
                     }

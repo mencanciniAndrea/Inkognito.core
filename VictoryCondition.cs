@@ -25,13 +25,13 @@ namespace Inkognito.Core
                     if (currentPawnPosition == g.AmbassadorPawn.Position.Id) return true;
                     else return false;
                 case TargetPosition.F_POSITION:
-                    return VerifyPositionByIdentity(Identity.F);
+                    return VerifyPositionByIdentity(Identity.F, g);
                 case TargetPosition.B_POSITION:
-                    return VerifyPositionByIdentity(Identity.B);
+                    return VerifyPositionByIdentity(Identity.B, g);
                 case TargetPosition.X_POSITION:
-                    return VerifyPositionByIdentity(Identity.X);
+                    return VerifyPositionByIdentity(Identity.X, g);
                 case TargetPosition.Z_POSITION:
-                    return VerifyPositionByIdentity(Identity.Z);
+                    return VerifyPositionByIdentity(Identity.Z, g);
                 case TargetPosition.EMBASSY:
                     return currentPawnPosition == 33;
                 case TargetPosition.POSITION_1:
@@ -56,10 +56,10 @@ namespace Inkognito.Core
             }
         }
 
-        private bool VerifyPositionByIdentity(Identity id)
+        private bool VerifyPositionByIdentity(Identity id, GameState g)
         {
             var currentPawnPosition = Pawn.Position.Id;
-            Pawn? targetPawn = g.GetPawnOf(Identity.F);
+            Pawn? targetPawn = g.GetPawnOf(id);
             if (targetPawn == null) return false;
             else
             {
