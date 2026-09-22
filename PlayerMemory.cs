@@ -17,7 +17,7 @@ namespace Inkognito.Core
             }
         }
 
-        public (Identity, Disguise, Mission) GetKnownPlayerDetails(PlayerColor pColor)
+        public (Identity, Disguise, MissionPart) GetKnownPlayerDetails(PlayerColor pColor)
         {
             foreach(PlayerKnowledge k in knowledgeAboutOtherPlayers)
             {
@@ -26,7 +26,7 @@ namespace Inkognito.Core
                     return (k.AssuredIdentity, k.AssuredDisguise, k.AssignedMission);
                 }
             }
-            return (Identity.DON_T_KNOW, Disguise.DON_T_KNOW, Mission.DON_T_KNOW);
+            return (Identity.DON_T_KNOW, Disguise.DON_T_KNOW, MissionPart.DON_T_KNOW);
         }
 
     }

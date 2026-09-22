@@ -71,7 +71,7 @@ namespace Inkognito.Core
             // Inizializzazione dei giocatori
             var identities = new List<Identity> { Identity.F, Identity.B, Identity.X, Identity.Z };
             var disguises = new List<Disguise> { Disguise.Tall, Disguise.Thin, Disguise.Fat, Disguise.Small };
-            var missions = new List<Mission> { Mission.Alfa, Mission.Bravo, Mission.Charlie, Mission.Delta };
+            var missions = new List<MissionPart> { MissionPart.Alfa, MissionPart.Bravo, MissionPart.Charlie, MissionPart.Delta };
 
             var colors = new[]
             {
@@ -117,9 +117,24 @@ namespace Inkognito.Core
             prophecyPhantom = new ProphecyPhantom(random);
         }
 
+        public Pawn? GetPawnOf(Identity id)
+        {
+            foreach(Player p in Players)
+            {
+                if(p.Identity == id)
+                {
+                    foreach(Pawn pa in p.Pawns)
+                    {
+                        if (pa.Disguise == p.Disguise) return pa;
+                    }
+                }
+            }
+            return null;
+        }
+
         private Player CreateAmbassadorPlayer(string name, ILoggerFactory loggerFactory)
         {
-            AmbassadorPlayer = new Player(name, PlayerColor.Black, Identity.A, Disguise.Ambassador, Mission.FindAllIdentities,
+            AmbassadorPlayer = new Player(name, PlayerColor.Black, Identity.A, Disguise.Ambassador, MissionPart.FindAllIdentities,
                         new[] { AmbassadorPawn }, loggerFactory);
             return AmbassadorPlayer;
         }

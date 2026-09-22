@@ -28,6 +28,9 @@ namespace Inkognito.Core
                 // verificare se il piano è legale prima di valutarlo
                 if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, turnPhase))
                 {
+                    
+                    EvaluatePlan(plan);
+
                     Console.Out.WriteLine($"Piano #{i}: {plan}");
 
                     // controllare che il piano non ti faccia tornare da dove sei partito e che non ti faccia tornare su una casella già visitata
@@ -63,6 +66,11 @@ namespace Inkognito.Core
             return plausiblePlans[0];
         }
 
+        public void EvaluatePlan(Plan plan)
+        {
+
+        }
+
         public IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory? memory)
         {
             // il lazy brain non fa niente. Come viene viene.
@@ -72,7 +80,7 @@ namespace Inkognito.Core
         public RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory)
         {
             // se non conosci l'identità di questo signore, chiedigliela
-            var (identity, disguise, mission) = memory.GetKnownPlayerDetails(pColor);
+            var (identity, disguise, mission) = memory!.GetKnownPlayerDetails(pColor);
             if (identity == Identity.DON_T_KNOW) return RequestType.IDENTITY;
             else if (disguise == Disguise.DON_T_KNOW) return RequestType.DISGUISE;
             return RequestType.IDENTITY;

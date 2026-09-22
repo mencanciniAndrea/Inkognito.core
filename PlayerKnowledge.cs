@@ -20,7 +20,7 @@ namespace Inkognito.Core
 
         public Disguise AssuredDisguise { get; }
 
-        public Mission AssignedMission { get; }
+        public MissionPart AssignedMission { get; }
 
         public PlayerKnowledge(PlayerColor p, Player me)
         {
@@ -33,7 +33,7 @@ namespace Inkognito.Core
             {
                 AssuredIdentity = Identity.DON_T_KNOW;
                 AssuredDisguise = Disguise.DON_T_KNOW;
-                AssignedMission = Mission.DON_T_KNOW;
+                AssignedMission = MissionPart.DON_T_KNOW;
 
                 // generare tutte le possibili coppie identità,travestimento togliendo i miei
                 var availableDisguises = new List<Disguise>
@@ -65,7 +65,7 @@ namespace Inkognito.Core
             {
                 AssuredIdentity = Identity.A;
                 AssuredDisguise = Disguise.Ambassador;
-                AssignedMission = Mission.FindAllIdentities;
+                AssignedMission = MissionPart.FindAllIdentities;
                 PossibleInfo.Add(new() { Identity = Identity.A, Disguise = Disguise.Ambassador });
             }
         }

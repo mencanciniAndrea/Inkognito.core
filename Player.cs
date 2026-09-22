@@ -20,7 +20,7 @@ namespace Inkognito.Core
         public PlayerColor Color { get; }
         public Identity Identity { get; }
         public Disguise Disguise { get; }
-        public Mission Mission { get; }
+        public MissionPart Mission { get; }
         public IReadOnlyList<Pawn> Pawns { get; }
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
@@ -40,7 +40,7 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
-        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, Mission mission, Pawn[] pawns, ILoggerFactory loggerFactory)
+        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, ILoggerFactory loggerFactory)
         {
             Name = name;
             Color = color;

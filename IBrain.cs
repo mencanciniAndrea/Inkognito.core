@@ -22,5 +22,7 @@ namespace Inkognito.Core
 
         RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory);
 
+        void EvaluatePlan(Plan plan);
+
     }
 }
