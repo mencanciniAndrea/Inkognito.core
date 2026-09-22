@@ -123,13 +123,20 @@ namespace Inkognito.Core
                     // 3. ask information to the player (crea la request e mandagliela)
                     // 4. add answer to the memory
                     // 5. move the pawn somewhere else and apply move into the general gamestate
+
                 }
 
                 // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
                 // TODO: chiudi il turno
             }
-
             
+        }
+
+        public void DeclareMissionCompleted()
+        {
+            //TODO: per completare la missione devi essere nel tuo turno corrente.
+            //TODO: la procedura è: 1. dichiara la vittoria dicendo "Missione Compiuta!" 2. scegli il giocatore a cui vuoi stringere la mano (dovrebbe essere il tuo alleato)
+            //TODO: se il giocatore scelto rifiuta (sì, perché può rifiutare, se non è il tuo alleato) allora vince la squadra avversaria alla tua
         }
 
     }
