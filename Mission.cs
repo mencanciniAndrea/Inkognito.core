@@ -84,7 +84,7 @@ namespace Inkognito.Core
                         case MissionPart.Bravo:
                             return new Mission( "portate F su B o B su F", F_D_B_B(g) );
                         case MissionPart.Charlie:
-                            return new Mission( "portate l'ambasciatore alla casella 8 (45)",  F_D_B_C(g) );
+                            return new Mission( "portate A alla casella 8 (45)",  F_D_B_C(g) );
                         default:
                             return new Mission("Mission Unknown", new List<VictoryCondition>());
                     }
@@ -257,8 +257,23 @@ namespace Inkognito.Core
         private static List<VictoryCondition> F_D_B_C(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
-            Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(A, TargetPosition.POSITION_8));
+
+            // check: se il giocatore ambasciatore è null
+            if (g.GetPlayerByColor(PlayerColor.Black) == null)
+            {
+                Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(A, TargetPosition.POSITION_8));
+            }
+            else
+            {
+                // variante in 5: l'ambasciatore è incontrollabile, quindi o F o B devono andare alla casella 8
+                Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentException("Pawn di F non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(F, TargetPosition.POSITION_8));
+
+                Pawn? B = g.GetPawnOf(Identity.B) ?? throw new ArgumentException("Pawn di B non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(B, TargetPosition.POSITION_8));
+            }
+            
             return vc;
         }
 
@@ -363,8 +378,23 @@ namespace Inkognito.Core
         private static List<VictoryCondition> Z_D_X_A(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
-            Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(A, TargetPosition.POSITION_3));
+
+            // check: se il giocatore ambasciatore è null
+            if (g.GetPlayerByColor(PlayerColor.Black) == null)
+            {
+                Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(A, TargetPosition.POSITION_3));
+            }
+            else
+            {
+                // variante in 5: l'ambasciatore è incontrollabile, quindi o F o B devono andare alla casella 8
+                Pawn? Z = g.GetPawnOf(Identity.Z) ?? throw new ArgumentException("Pawn di Z non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(Z, TargetPosition.POSITION_3));
+
+                Pawn? X = g.GetPawnOf(Identity.X) ?? throw new ArgumentException("Pawn di X non può essere null a questo punto!");
+                vc.Add(new VictoryCondition(X, TargetPosition.POSITION_3));
+            }
+
             return vc;
         }
 

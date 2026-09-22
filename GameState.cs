@@ -87,7 +87,7 @@ namespace Inkognito.Core
             AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
-            List<Pawn> pawns = new List<Pawn> { AmbassadorPawn};
+            List<Pawn> pawns = new List<Pawn> {};
 
             var players = new Player?[playerNames.Length];
             for (int i = 0; i < playerNames.Length; i++)
@@ -104,6 +104,12 @@ namespace Inkognito.Core
                         CreatePawns(colors[i], random), loggerFactory);
                 pawns.AddRange(players[i]!.Pawns);
             }
+
+            if(GetPlayerByColor(PlayerColor.Black) == null)
+            {
+                pawns.Add(AmbassadorPawn);
+            }
+
             Board.Pawns = pawns;
 
             // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.

@@ -89,9 +89,16 @@ namespace Inkognito.Core
         {
             List<Plan> allPlans = new List<Plan>();
 
-            MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
+            IReadOnlyList<IReadOnlyList<MoveType>> moveTypeCombinations;
 
-            var moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
+            if(currentPlayer.Identity != Identity.A)
+            {
+                MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
+                moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
+            } else
+            {
+                moveTypeCombinations = new List<List<MoveType>>{ new (){ moveTypes.ElementAt(0), moveTypes.ElementAt(1) } };
+            }
 
             foreach (var combination in moveTypeCombinations)
             {
