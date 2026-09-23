@@ -9,21 +9,8 @@ namespace Inkognito.Core
     {
         Plan ChoosePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase);
 
-        /// <summary>
-        /// Si decide il piano per il giocatore Ambasciatore. L'ambasciatore non ha molto da fare,
-        /// deve solo scoprire l'identità di tutti e dichiarare di averlo fatto prima che una coppia
-        /// dichiari missione compiuta. 
-        /// Se dichiara che ha capito l'identità di tutti, la deve comunicare (come se la comunicasse alla stampa...)
-        /// e poi aspetta la fine della partita. 
-        /// Alla fine della partita, se ha indovinato i 4 giocatori, vince l'ambasciatore, a prescindere dall'esito
-        /// della missione vera e propria. Se ha sbagliato, o se non ha dichiarato niente, si valuta l'esito della missione
-        /// lasciando fuori l'ambasciatore.
-        /// 
-        /// In ogni caso, il giocatore ambasciatore può effettuare 1 o 2 movimenti su qualunque percorso (non può saltare pedine).
-        /// </summary>
-        /// <param name="gameState"></param>
-        /// <returns></returns>
-        //Plan ChooseAmbassadorPlayerPlan(GameState gameState);
+        RequestAnswer AnswerToDirectQuestion(Player me, RequestType reqType, Player sender, PlayerMemory? memory);
+        RequestAnswer AnswerToQuestionThorughAmbassador(Player me, RequestType reqType, Player sender, PlayerMemory? memory);
 
         /// <summary>
         /// Questo passaggio è importante

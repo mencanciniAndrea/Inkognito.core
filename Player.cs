@@ -139,6 +139,14 @@ namespace Inkognito.Core
             // TODO: chiudi il turno
         }
 
+        public RequestAnswer AskDirectly(RequestType reqType, Player asker)
+        {
+            // CHI decide che risposte dare? il BRAIN!
+            return Brain.AnswerToDirectQuestion(this, reqType, asker, Memory);
+        }
+
+
+
         public void DeclareMissionCompleted()
         {
             //TODO: per completare la missione devi essere nel tuo turno corrente.

@@ -68,7 +68,82 @@ namespace Inkognito.Core
 
         public void EvaluatePlan(Plan plan)
         {
+            //TODO implementare!
+        }
 
+        /// <summary>
+        /// Bisogna rispondere ad una richiesta fatta direttamente da un altro giocatore.
+        /// Bisogna dare 3 carte (almeno), di cui almeno una vera. 2 carte del tipo della richiesta, 1 dell'altro.
+        /// 
+        /// Se il giocatore richiedente è l'ambasciatore, bisogna dare 2 carte del tipo della richiesta e basta.
+        /// 
+        /// Non si può fornire una risposta già data in precedenza, Se tutte le possibili risposte sono state già
+        /// date, allora OK, se ne sceglie una a caso.
+        /// 
+        /// Attenzione! la coppia di carte del tipo della richiesta non deve essere stato fornito nemmeno come set da 2!
+        /// 
+        /// avanzato: nel caso in cui sappiamo che il player è un alleato, sarebbe il caso di farglielo sapere, ed
+        /// anche di comunicargli la missione, visto che così possiamo saltare alla fase di Compimento Missione
+        /// </summary>
+        /// <param name="me"></param>
+        /// <param name="reqType"></param>
+        /// <param name="sender"></param>
+        /// <param name="memory"></param>
+        /// <returns></returns>
+        public RequestAnswer AnswerToDirectQuestion(Player me, RequestType reqType, Player sender, PlayerMemory? memory)
+        {
+            List<InkognitoCard> answers = new List<InkognitoCard>();
+
+            // TODO terminare!
+            switch (reqType)
+            {
+                case RequestType.IDENTITY:
+                    break;
+                case RequestType.DISGUISE:
+                    break;
+            }
+
+            answers.Add(new InkognitoCard() { 
+                Type = InkognitoCardType.IDENTITY,
+                Visibility = InkognitoCardVisibility.PUBLIC,
+                Value = (int)Identity.B });
+
+            return new RequestAnswer() { cards = answers };
+        }
+
+        /// <summary>
+        /// Per rispondere ad una richiesta che viene da un Player ma è fatta attravesrso l'ambasciatore.
+        /// Bisogna restituire 2 carte del tipo della richiesta, di cui una per forza vera.
+        /// L'ordine non conta.
+        /// La coppia di carte però, non deve essere già stata mostrata. Se non ci sono possibilità, allora mostrare
+        /// una coppia già mostrata (non c'è altra via).
+        /// </summary>
+        /// <param name="me"></param>
+        /// <param name="reqType"></param>
+        /// <param name="sender"></param>
+        /// <param name="memory"></param>
+        /// <returns></returns>
+        public RequestAnswer AnswerToQuestionThorughAmbassador(Player me, RequestType reqType, Player sender, PlayerMemory? memory) 
+        {
+            List<InkognitoCard> answers = new List<InkognitoCard>();
+
+            // TODO terminare
+            switch (reqType)
+            {
+                case RequestType.IDENTITY:
+                    break;
+                case RequestType.DISGUISE:
+                    break;
+            }
+
+            answers.Add(new InkognitoCard()
+            {
+                Type = InkognitoCardType.IDENTITY,
+                Visibility = InkognitoCardVisibility.PUBLIC,
+                Value = (int)Identity.B
+            });
+
+            return new RequestAnswer() { cards = answers };
         }
 
         public IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory? memory)
