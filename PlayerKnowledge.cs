@@ -85,18 +85,6 @@ namespace Inkognito.Core
             
         }
 
-        /// <summary>
-        /// Gestisce cosa fare quando arriva una carta segreta.
-        /// Sulle carte segrete non si fanno ragionamenti particolari, ci si fida delle carte segrete (Anche se nel mondo reale si può barare anche lì... però in questo gioco non lo farei, almeno per ora).
-        /// </summary>
-        /// <param name="a"></param>
-        /// <exception cref="ArgumentException"></exception>
-        private void ManageSecretCard(InkognitoCard a)
-        {
-            
-            }
-        }
-
         public void AddAnswerGiven(PlayerAnswer answer)
         {
             AnswersGiven.Add(answer);

@@ -98,7 +98,7 @@ namespace Inkognito.Core
                     continue;
                 }
                 players[i] = colors[i] == PlayerColor.Black
-                    ? CreateAmbassadorPlayer(playerName!, loggerFactory)
+                    ? CreateAmbassadorPlayer(playerName!, loggerFactory, random)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),
                         CreatePawns(colors[i], random), loggerFactory, random);
@@ -138,10 +138,10 @@ namespace Inkognito.Core
             return null;
         }
 
-        private Player CreateAmbassadorPlayer(string name, ILoggerFactory loggerFactory)
+        private Player CreateAmbassadorPlayer(string name, ILoggerFactory loggerFactory, Random random)
         {
             AmbassadorPlayer = new Player(name, PlayerColor.Black, Identity.A, Disguise.Ambassador, MissionPart.FindAllIdentities,
-                        new[] { AmbassadorPawn }, loggerFactory);
+                        new[] { AmbassadorPawn }, loggerFactory, random);
             return AmbassadorPlayer;
         }
 

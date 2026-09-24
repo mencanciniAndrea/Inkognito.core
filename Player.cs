@@ -120,12 +120,12 @@ namespace Inkognito.Core
             foreach (Pawn p in sortedPawnList)
             {
                 // 2. a chi chiedo cosa? Cervello, aiutami tu...
-                var (ogherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory, random);
+                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory, random);
 
                 // 3. ask information to the player (crea la request e mandagliela)
-                PlayerInfoRequest request = new (ogherPlayerColor, reqType, p.Color == PlayerColor.Black);
+                PlayerInfoRequest request = new (Color, otherPlayerColor, reqType, p.Color == PlayerColor.Black);
 
-                Player? otherPlayer = gameState.GetPlayerByColor(p.Color);
+                Player? otherPlayer = gameState.GetPlayerByColor(otherPlayerColor);
 
                 if (otherPlayer == null)
                 {
