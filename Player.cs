@@ -16,6 +16,8 @@ namespace Inkognito.Core
 
         private readonly ILogger<Player> _logger;
 
+        private Random random;
+
         public string Name { get; }
         public PlayerType Type { get; internal set; } = PlayerType.Human;
         public PlayerColor Color { get; }
@@ -33,7 +35,7 @@ namespace Inkognito.Core
 
         public IBrain Brain { get; internal set; } = null!;
 
-        public PlayerMemory? Memory { get; internal set; } = null;
+        public PlayerMemory? Memory { get; internal set; }
 
         //----------------------------------------------------------------------
         //
@@ -41,7 +43,7 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
-        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, ILoggerFactory loggerFactory)
+        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, ILoggerFactory loggerFactory, Random r)
         {
             Name = name;
             Color = color;
@@ -51,6 +53,8 @@ namespace Inkognito.Core
             Pawns = Array.AsReadOnly(pawns);
             Brain = new LazyBrain(loggerFactory); //TODO: non ci deve essere solo un LazyBrain!!!
             _logger = loggerFactory.CreateLogger<Player>();
+            random = r;
+
         }
 
         public void InitMemory(List<Player> allPlayers)
@@ -115,6 +119,12 @@ namespace Inkognito.Core
             // fase 4: se la lista di player a cui chiedere informazioni non è vuota, si chiede a ciascuno di loro le informazioni richieste del tipo richiesto
             foreach (Pawn p in sortedPawnList)
             {
+                // 2. a chi chiedo cosa? Cervello, aiutami tu...
+                var (ogherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory, random);
+
+                // 3. ask information to the player (crea la request e mandagliela)
+                PlayerInfoRequest request = new (ogherPlayerColor, reqType, p.Color == PlayerColor.Black);
+
                 Player? otherPlayer = gameState.GetPlayerByColor(p.Color);
 
                 if (otherPlayer == null)
@@ -122,36 +132,52 @@ namespace Inkognito.Core
                     throw new ArgumentNullException($"Impossibile decidere il giocatore a cui chiedere le informazioni!!! Seed partita: {gameState.Seed}");
                 }
 
+                var answer = otherPlayer.Ask(request);
 
-                // 2. decide which information to ask, based on what you know about him and others
-                RequestType reqType = Brain.WhatToRequestTo(otherPlayer.Color, Memory);
-                // 3. ask information to the player (crea la request e mandagliela)
                 // 4. add answer to the memory
+                Brain.ManageAnswer(answer, Memory!);
 
-                // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato
+                // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory)) DeclareMissionCompleted();
 
                 // 5. move the pawn somewhere else and apply move into the general gamestate
+                Plan dismissionPlan = Brain.ChoosePlan(gameState, new List<MoveType> { MoveType.DismissPawn }, TurnPhase.Expulsion);
 
-                // Fase 6: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi mandare l'ambasciatore o un player da qualche parte
+                _logger.LogDebug($"Applico le mosse del piano {plan}");
+                foreach (var move in plan.Moves)
+                {
+                    gameState.Board.ApplyMove(move);
+                }
             }
 
+            // Fase 6: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi mandare l'ambasciatore o un player da qualche parte)
+            if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory)) DeclareMissionCompleted();
+
             // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
-            // TODO: chiudi il turno
+            EndTurn();
         }
 
-        public RequestAnswer AskDirectly(RequestType reqType, Player asker)
+        public PlayerAnswer Ask(PlayerInfoRequest req)
         {
-            // CHI decide che risposte dare? il BRAIN!
-            return Brain.AnswerToDirectQuestion(this, reqType, asker, Memory);
+            // Devo dare una risposta... che gli dico? Cervello, aiutami tu...
+            return Brain.ReplyToRequest(this, req, Memory!);
         }
 
-
-
+        /// <summary>
+        /// Da usare quando decidi di dichiarare missione compiuta
+        /// </summary>
         public void DeclareMissionCompleted()
         {
             //TODO: per completare la missione devi essere nel tuo turno corrente.
             //TODO: la procedura è: 1. dichiara la vittoria dicendo "Missione Compiuta!" 2. scegli il giocatore a cui vuoi stringere la mano (dovrebbe essere il tuo alleato)
             //TODO: se il giocatore scelto rifiuta (sì, perché può rifiutare, se non è il tuo alleato) allora vince la squadra avversaria alla tua
+            //TODO: se il giocatore ti stringe la mano ed è il tuo alleato, ma avete sbagliato missione: vincono gli altri
+            //TODO: se il giocatore ti stringe la mano e non è il tuo alleato... patta.
+        }
+
+        public void EndTurn()
+        {
+            //TODO: fine turno dichiarata. Questo giocatore non può più dichiarare Missione Compiuta.
         }
 
     }

@@ -9,6 +9,6 @@ namespace Inkognito.Core
         Move,
         InfoGathering,
 
-        Departure
+        Expulsion
     }
 }

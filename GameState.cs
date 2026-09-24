@@ -101,7 +101,7 @@ namespace Inkognito.Core
                     ? CreateAmbassadorPlayer(playerName!, loggerFactory)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),
-                        CreatePawns(colors[i], random), loggerFactory);
+                        CreatePawns(colors[i], random), loggerFactory, random);
                 pawns.AddRange(players[i]!.Pawns);
             }
 

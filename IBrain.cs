@@ -9,8 +9,18 @@ namespace Inkognito.Core
     {
         Plan ChoosePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase);
 
-        RequestAnswer AnswerToDirectQuestion(Player me, RequestType reqType, Player sender, PlayerMemory? memory);
-        RequestAnswer AnswerToQuestionThorughAmbassador(Player me, RequestType reqType, Player sender, PlayerMemory? memory);
+        Plan DismissPawn(GameState gameState, Pawn p, PlayerMemory memory);
+
+        /// <summary>
+        /// gestisce le risposte da dare al giocatore che ti sta chiedendo informazioni
+        /// </summary>
+        /// <param name="me"></param>
+        /// <param name="request"></param>
+        /// <param name="memory"></param>
+        /// <returns></returns>
+        PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory);
+
+        void ManageAnswer(PlayerAnswer answer, PlayerMemory memory);
 
         /// <summary>
         /// Questo passaggio è importante
@@ -21,9 +31,11 @@ namespace Inkognito.Core
         /// <param name="originalPawnList">La lista di pawn da interrogare</param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory? memory);
+        IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory memory);
 
-        RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory);
+        (PlayerColor, RequestType) WhatToRequestTo(PlayerColor pColor, PlayerMemory memory, Random random);
+
+        bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory);
 
         void EvaluatePlan(Plan plan);
 

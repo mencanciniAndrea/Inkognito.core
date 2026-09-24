@@ -14,20 +14,29 @@ namespace Inkognito.Core
 
         List<PlayerAnswer> AnswersGiven { get; }
 
-        List<IdentityDisguisePair> PossibleInfo { get; }
+        /// <summary>
+        /// rappresenta la matrice di accoppiamenti Identity, Disguise possibili che l'altro giocatore potrebbe assumere in funzione di quello che mi ha comunicato
+        /// </summary>
+        public bool[,] WhatIKnowAboutHim { get; private set; }
 
-        public Identity AssuredIdentity { get; }
+        /// <summary>
+        /// rappresenta la matrice di possibilità che secondo me, l'altro player ha nella sua testa, in funzione di quello che ho comunicato
+        /// </summary>
+        public bool[,] WhatHeKnowsAboutMe { get; private set; }
 
-        public Disguise AssuredDisguise { get; }
+        public Identity AssuredIdentity { get; set; }
 
-        public MissionPart AssignedMission { get; }
+        public Disguise AssuredDisguise { get; set; }
+
+        public MissionPart AssignedMission { get; set; } 
 
         public PlayerKnowledge(PlayerColor p, Player me)
         {
             About = p;
             AnswersReceived = new List<PlayerAnswer>();
             AnswersGiven = new List<PlayerAnswer>();
-            PossibleInfo = new List<IdentityDisguisePair>();
+            WhatIKnowAboutHim = new bool[5, 5];
+            WhatHeKnowsAboutMe  = new bool[5, 5];
 
             if (p != PlayerColor.Black)
             {
@@ -35,29 +44,19 @@ namespace Inkognito.Core
                 AssuredDisguise = Disguise.DON_T_KNOW;
                 AssignedMission = MissionPart.DON_T_KNOW;
 
-                // generare tutte le possibili coppie identità,travestimento togliendo i miei
-                var availableDisguises = new List<Disguise>
+                for(int identity = 1; identity < (int) Identity.DON_T_KNOW; identity++)
                 {
-                    Disguise.Fat,
-                    Disguise.Small,
-                    Disguise.Tall,
-                    Disguise.Thin
-                }.Where(d => d != me.Disguise).ToList();
-
-                var availableIdentities = new List<Identity>
-                {
-                    Identity.F,
-                    Identity.B,
-                    Identity.X,
-                    Identity.Z
-                }.Where(i => i != me.Identity).ToList();
-
-                foreach(Identity i in availableIdentities)
-                {
-                    foreach(Disguise d in availableDisguises)
+                    for (int disguise = 1; disguise < (int) Disguise.DON_T_KNOW; disguise++)
                     {
-                        IdentityDisguisePair possibility = new () { Identity = i, Disguise = d };
-                        PossibleInfo.Add(possibility);
+                        if (identity == (int)me.Identity || disguise == (int)me.Disguise)
+                        {
+                            // lascio fuori tutta la colonna con la mia identità e la riga con il mio travestimento
+                            WhatIKnowAboutHim[identity, disguise] = false;
+                        }
+                        else
+                        {
+                            WhatIKnowAboutHim[identity, disguise] = true;
+                        }
                     }
                 }
             }
@@ -66,7 +65,16 @@ namespace Inkognito.Core
                 AssuredIdentity = Identity.A;
                 AssuredDisguise = Disguise.Ambassador;
                 AssignedMission = MissionPart.FindAllIdentities;
-                PossibleInfo.Add(new() { Identity = Identity.A, Disguise = Disguise.Ambassador });
+                WhatIKnowAboutHim[(int)Identity.A, (int)Disguise.Ambassador] = true;
+            }
+
+            // WhatHeKnowsAboutMe - vale per tutti, anche per l'ambasciatore
+            for(int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
+            {
+                for(int disguise = 1; disguise < (int) Disguise.DON_T_KNOW; disguise++)
+                {
+                    WhatHeKnowsAboutMe[identity, disguise] = true;
+                }
             }
         }
 
@@ -74,30 +82,19 @@ namespace Inkognito.Core
         {
             AnswersReceived.Add(answer);
 
-            // TODO: elimina tutte le possibilità che non rendono vera questa risposta
-            // TODO: Scommenta questa, sembra OK
-            // PossibleInfo = PossibleInfo.Where(pInfo => {
-            //    bool atLeastOneFound = false;
-            //    foreach (Card c in answer)
-            //    {
-            //        if (c.type == identity)
-            //           if (c.value == pInfo.identity)
-            //           {
-            //               atLeastOneFound = true;
-            //               break;
-            //           }
-            //        if (c.Type == Disguise)
-            //        {
-            //            if (c.value == pInfo.Disguise)
-            //            {
-            //                atLeastOneFound = true;
-            //                break;
-            //            }
-            //        }
-            //    }
-            //    return atLeastOneFound;});
+            
+        }
 
-            //TODO: caso speciale: gestire le carte segrete! (magari questo lo facciamo dopo, visto che è un caso avanzato)
+        /// <summary>
+        /// Gestisce cosa fare quando arriva una carta segreta.
+        /// Sulle carte segrete non si fanno ragionamenti particolari, ci si fida delle carte segrete (Anche se nel mondo reale si può barare anche lì... però in questo gioco non lo farei, almeno per ora).
+        /// </summary>
+        /// <param name="a"></param>
+        /// <exception cref="ArgumentException"></exception>
+        private void ManageSecretCard(InkognitoCard a)
+        {
+            
+            }
         }
 
         public void AddAnswerGiven(PlayerAnswer answer)

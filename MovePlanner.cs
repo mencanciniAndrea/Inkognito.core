@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -91,13 +92,24 @@ namespace Inkognito.Core
 
             IReadOnlyList<IReadOnlyList<MoveType>> moveTypeCombinations;
 
-            if(currentPlayer.Identity != Identity.A)
+            switch (turnPhase)
             {
-                MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
-                moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
-            } else
-            {
-                moveTypeCombinations = new List<List<MoveType>>{ new (){ moveTypes.ElementAt(0), moveTypes.ElementAt(1) } };
+                case TurnPhase.Move:
+                    if (currentPlayer.Identity != Identity.A)
+                    {
+                        MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
+                        moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
+                    }
+                    else
+                    {
+                        moveTypeCombinations = new List<List<MoveType>> { new() { moveTypes.ElementAt(0), moveTypes.ElementAt(1) } };
+                    }
+                    break;
+                case TurnPhase.Expulsion:
+                    moveTypeCombinations = new List<List<MoveType>> { new() { moveTypes.ElementAt(0) } };
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"TurnPhase {turnPhase} non gestita");
             }
 
             foreach (var combination in moveTypeCombinations)
@@ -119,33 +131,59 @@ namespace Inkognito.Core
         public IReadOnlyList<Move> GenerateLegalMoves(Board gameBoard, MoveType moveType, Player currentPlayer, TurnPhase turnPhase)
         {
             List<Move> legalMoves = new List<Move>();
-            if (moveType == MoveType.Ambassador)
+            switch (turnPhase)
             {
-                var moves = RulesEngine.GetLegalMoves(gameBoard.AmbassadorPawn, moveType, gameBoard, currentPlayer, turnPhase);
-                legalMoves.AddRange(moves);
-            }
-            else if(moveType == MoveType.AnotherPlayerPawn)
-            {
-                foreach (var pawn in gameBoard.Pawns)
-                {
-                    if (pawn.Color != currentPlayer.Color)
+                case TurnPhase.Move:
+                    if (moveType == MoveType.Ambassador)
                     {
-                        var moves = RulesEngine.GetLegalMoves(pawn, moveType, gameBoard, currentPlayer, turnPhase);
+                        var moves = RulesEngine.GetLegalMoves(gameBoard.AmbassadorPawn, moveType, gameBoard, currentPlayer, turnPhase);
                         legalMoves.AddRange(moves);
                     }
-                }
-            }
-            else if(moveType == MoveType.Land || moveType == MoveType.Water || moveType == MoveType.LandOrWater)
-            {
-                foreach (var pawn in gameBoard.Pawns)
-                {
-                    if (pawn.Color == currentPlayer.Color)
+                    else if (moveType == MoveType.AnotherPlayerPawn)
                     {
-                        var moves = RulesEngine.GetLegalMoves(pawn, moveType, gameBoard, currentPlayer, turnPhase);
-                        legalMoves.AddRange(moves);
+                        foreach (var pawn in gameBoard.Pawns)
+                        {
+                            if (pawn.Color != currentPlayer.Color)
+                            {
+                                var moves = RulesEngine.GetLegalMoves(pawn, moveType, gameBoard, currentPlayer, turnPhase);
+                                legalMoves.AddRange(moves);
+                            }
+                        }
                     }
-                }
+                    else if (moveType == MoveType.Land || moveType == MoveType.Water || moveType == MoveType.LandOrWater)
+                    {
+                        foreach (var pawn in gameBoard.Pawns)
+                        {
+                            if (pawn.Color == currentPlayer.Color)
+                            {
+                                var moves = RulesEngine.GetLegalMoves(pawn, moveType, gameBoard, currentPlayer, turnPhase);
+                                legalMoves.AddRange(moves);
+                            }
+                        }
+                    }
+                    break;
+                case TurnPhase.Expulsion:
+
+                    foreach(var pawn in gameBoard.Pawns)
+                    {
+                        // i tuoi non li puoi più muovere
+                        if (pawn.Color == currentPlayer.Color) continue;
+                        var position = pawn.Position;
+                        var pawnsAtPosition = gameBoard.GetPawnsOnCell(position);
+                        if(pawnsAtPosition.Count > 1)
+                        {
+                            foreach (var p in pawnsAtPosition)
+                            {
+                                // skippa il tuo
+                                if (p.Color == currentPlayer.Color) continue;
+                                var moves = RulesEngine.GetLegalMoves(p, MoveType.DismissPawn, gameBoard, currentPlayer, turnPhase);
+                                legalMoves.AddRange(moves);
+                            }
+                        }
+                    }
+                    break;
             }
+
             return legalMoves;
         }
 
@@ -206,9 +244,7 @@ namespace Inkognito.Core
                                                     // invece dobbiamo tenerli tutti, perché non sei obbligato a usare tutte le mosse.
                     candidatePlans.AddRange(newPlans);
                 }
-                
             }
-
 
             // ultimo passaggio: il RulesEgine scarta i piani che non sono legali
             List<Plan> result = new List<Plan>();

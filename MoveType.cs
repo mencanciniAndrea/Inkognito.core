@@ -7,6 +7,7 @@ namespace Inkognito.Core
         Water,
         LandOrWater,
         Ambassador,
-        AnotherPlayerPawn
+        AnotherPlayerPawn,
+        DismissPawn
     }
 }

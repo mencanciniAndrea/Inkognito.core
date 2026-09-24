@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO.Pipes;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
@@ -72,93 +73,172 @@ namespace Inkognito.Core
         }
 
         /// <summary>
-        /// Bisogna rispondere ad una richiesta fatta direttamente da un altro giocatore.
-        /// Bisogna dare 3 carte (almeno), di cui almeno una vera. 2 carte del tipo della richiesta, 1 dell'altro.
-        /// 
-        /// Se il giocatore richiedente è l'ambasciatore, bisogna dare 2 carte del tipo della richiesta e basta.
-        /// 
-        /// Non si può fornire una risposta già data in precedenza, Se tutte le possibili risposte sono state già
-        /// date, allora OK, se ne sceglie una a caso.
-        /// 
-        /// Attenzione! la coppia di carte del tipo della richiesta non deve essere stato fornito nemmeno come set da 2!
-        /// 
-        /// avanzato: nel caso in cui sappiamo che il player è un alleato, sarebbe il caso di farglielo sapere, ed
-        /// anche di comunicargli la missione, visto che così possiamo saltare alla fase di Compimento Missione
+        /// Decidi quali carte mostrare al player
         /// </summary>
         /// <param name="me"></param>
-        /// <param name="reqType"></param>
-        /// <param name="sender"></param>
+        /// <param name="request"></param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        public RequestAnswer AnswerToDirectQuestion(Player me, RequestType reqType, Player sender, PlayerMemory? memory)
+        public PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory)
         {
-            List<InkognitoCard> answers = new List<InkognitoCard>();
+            PlayerAnswer result = new();
 
-            // TODO terminare!
-            switch (reqType)
+            // ora partono tutti i ragionamenti. 
+            // un lazy brain non è che faccia tutti questi ragionamenti, in effetti... però qualcosa deve pur rispondere.
+
+            // 1. stabiliamo intanto quante e quali carte mostrare
+
+            int numberOfIdentityCardsToShow;
+            int numberOfDisguiseCardsToShow;
+
+            switch (request.Type)
             {
                 case RequestType.IDENTITY:
+                    numberOfIdentityCardsToShow = 2;
+                    numberOfDisguiseCardsToShow = request.ThroughAmbassador ? 0 : 1;
                     break;
                 case RequestType.DISGUISE:
+                    numberOfIdentityCardsToShow = request.ThroughAmbassador ? 0 : 1;
+                    numberOfDisguiseCardsToShow = 2;
                     break;
             }
 
-            answers.Add(new InkognitoCard() { 
-                Type = InkognitoCardType.IDENTITY,
-                Visibility = InkognitoCardVisibility.PUBLIC,
-                Value = (int)Identity.B });
+            // 2. ora possiamo decidere quali carte estrarre
+            // TODO: completare
 
-            return new RequestAnswer() { cards = answers };
+
+
+            return result;
         }
 
         /// <summary>
-        /// Per rispondere ad una richiesta che viene da un Player ma è fatta attravesrso l'ambasciatore.
-        /// Bisogna restituire 2 carte del tipo della richiesta, di cui una per forza vera.
-        /// L'ordine non conta.
-        /// La coppia di carte però, non deve essere già stata mostrata. Se non ci sono possibilità, allora mostrare
-        /// una coppia già mostrata (non c'è altra via).
+        /// usato per decidere se dichiarare missione compiuta
         /// </summary>
         /// <param name="me"></param>
-        /// <param name="reqType"></param>
-        /// <param name="sender"></param>
+        /// <param name="gameState"></param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        public RequestAnswer AnswerToQuestionThorughAmbassador(Player me, RequestType reqType, Player sender, PlayerMemory? memory) 
+        public bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory)
         {
-            List<InkognitoCard> answers = new List<InkognitoCard>();
-
-            // TODO terminare
-            switch (reqType)
-            {
-                case RequestType.IDENTITY:
-                    break;
-                case RequestType.DISGUISE:
-                    break;
-            }
-
-            answers.Add(new InkognitoCard()
-            {
-                Type = InkognitoCardType.IDENTITY,
-                Visibility = InkognitoCardVisibility.PUBLIC,
-                Value = (int)Identity.B
-            });
-
-            return new RequestAnswer() { cards = answers };
+            //TODO implementare
+            return false;
         }
 
+        /// <summary>
+        /// Riordina la lista dei pawns interrogabili.
+        /// Il lazy brain non fa ragionamenti, la riporta così com'è.
+        /// Un cervello più avanzato potrebbe fare ragionamenti, per massimizzare la quantità di informazioni certe raccoglibili
+        /// </summary>
+        /// <param name="originalPawnList"></param>
+        /// <param name="memory"></param>
+        /// <returns></returns>
         public IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory? memory)
         {
             // il lazy brain non fa niente. Come viene viene.
             return originalPawnList;
         }
 
-        public RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory)
+        /// <summary>
+        /// Gestisce la decisione di cosa chiedere a chi hai incontrato
+        /// </summary>
+        /// <param name="pColor"></param>
+        /// <param name="memory"></param>
+        /// <param name="random"></param>
+        /// <returns></returns>
+        public (PlayerColor,RequestType) WhatToRequestTo(PlayerColor pColor, PlayerMemory? memory, Random random)
         {
+            PlayerColor playerColor = pColor;
+            if(pColor == PlayerColor.Black)
+            {
+                // se è l'ambasciatore scegli a caso... qui si potrebbe anche fare una cosa più strutturata, ma per un lazy brain...
+                playerColor = (PlayerColor) (random.Next((int)PlayerColor.Yellow) + 1);
+            }
             // se non conosci l'identità di questo signore, chiedigliela
             var (identity, disguise, mission) = memory!.GetKnownPlayerDetails(pColor);
-            if (identity == Identity.DON_T_KNOW) return RequestType.IDENTITY;
-            else if (disguise == Disguise.DON_T_KNOW) return RequestType.DISGUISE;
-            return RequestType.IDENTITY;
+            if (identity == Identity.DON_T_KNOW) return (playerColor, RequestType.IDENTITY);
+            else if (disguise == Disguise.DON_T_KNOW) return (playerColor, RequestType.DISGUISE);
+            return (playerColor, RequestType.IDENTITY);
+        }
+
+        /// <summary>
+        /// Elabora un piano di mosse per mandare via il pawn corrente
+        /// </summary>
+        /// <param name="gameState"></param>
+        /// <param name="p"></param>
+        /// <param name="memory"></param>
+        /// <returns></returns>
+        public Plan DismissPawn(GameState gameState, Pawn p, PlayerMemory memory)
+        {
+            // TODO pianificare le mosse per mandare via un pedone
+            return null;
+        }
+
+        public void ManageAnswer(PlayerAnswer answer, PlayerMemory memory)
+        {
+            var receiverColor = answer.Request.Receiver;
+            PlayerKnowledge k = memory.GetPlayerKnowledge(receiverColor);
+            k.AddAnswerReceived(answer);
+
+            // questa è la bitmask creata dalle risposte
+            var answerBitmask = answer.AsBitmask();
+
+            // metti in AND logico la bitmask con WhatIKnowAboutHim. Se la sua bitmask ha uno zero, il mio diventa zero. Se il mio era zero, resta zero.
+            for (int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
+            {
+                for (int disguise = 1; disguise < (int)Disguise.DON_T_KNOW; disguise++)
+                {
+                    k.WhatIKnowAboutHim[identity, disguise] = k.WhatIKnowAboutHim[identity, disguise] && answerBitmask[identity, disguise];
+                }
+            }
+
+            // gestisci eventuali carte segrete
+            foreach (var a in answer.Answers)
+            {
+                if (a.Visibility == InkognitoCardVisibility.SECRET)
+                {
+                    // caso avanzato, ma lo gestiamo lo stesso
+                    switch (a.Type)
+                    {
+                        case InkognitoCardType.IDENTITY:
+                            // carta segreta identità: metti 0 a tutte le altre
+                            k.AssuredIdentity = (Identity)a.Value;
+                            for (int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
+                            {
+                                for (int disguise = 1; disguise < (int)Disguise.DON_T_KNOW; disguise++)
+                                {
+                                    if (identity != a.Value)
+                                    {
+                                        k.WhatIKnowAboutHim[identity, disguise] = false;
+                                    }
+                                }
+                            }
+                            break;
+                        case InkognitoCardType.DISGUISE:
+                            // carta segreta travestimento: metti 0 a tutte quelle non corrispondenti
+                            k.AssuredDisguise = (Disguise)a.Value;
+                            for (int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
+                            {
+                                for (int disguise = 1; disguise < (int)Disguise.DON_T_KNOW; disguise++)
+                                {
+                                    if (disguise != a.Value)
+                                    {
+                                        k.WhatIKnowAboutHim[identity, disguise] = false;
+                                    }
+                                }
+                            }
+                            break;
+                        case InkognitoCardType.MISSION:
+                            // Qui non c'è da fare ragionamenti. Mi ha fatto vedere la missione. Va bene così, sia che è mio compagno che non (nell'ultimo caso mi sta ingannando).
+                            k.AssignedMission = (MissionPart)a.Value;
+                            break;
+                        default:
+                            throw new ArgumentException($"Card Type {a.Type} not valid at this point!");
+                    }
+                }
+
+                //Attenzione qui: questo è il momento di fare inferenza anche sulle altre conosceze: se hai beccato l'identità o il travestimento di uno, questo si ripercuote anche sugli altri
+                // ma è il Brain che deve fare questo ragionamento
+            }
         }
     }
 }
