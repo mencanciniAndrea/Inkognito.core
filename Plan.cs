@@ -8,11 +8,35 @@ namespace Inkognito.Core
     {
         public List<Move> Moves { get; private set; }
 
-        public Board resultingBoard { get; set; }
+        public Board resultingBoard { get; private set; }
 
-        public Plan()
+        public Plan(Board originalBoard)
         {
             Moves = new List<Move>();
+            resultingBoard = originalBoard.Clone();
+        }
+
+        public Plan Clone()
+        {
+            Plan result = new(resultingBoard);
+            // si fa così perché non voglio ri-applicare le mosse già esistenti
+            result.Moves.AddRange(Moves);
+            return result;
+        }
+
+        public void AddMove(Move m)
+        {
+            Moves.Add(m);
+            resultingBoard.ApplyMove(m);
+        }
+
+        public void AddRange(IEnumerable<Move> collection)
+        {
+            Moves.AddRange(collection);
+            foreach(var m in collection)
+            {
+                resultingBoard.ApplyMove(m);
+            }
         }
 
         public override string ToString()

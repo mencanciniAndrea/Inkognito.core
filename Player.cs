@@ -90,10 +90,10 @@ namespace Inkognito.Core
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
-            Plan plan = Brain.ChoosePlan(gameState, AvailableMoves, TurnPhase.Move);
+            Plan movementsPlan = Brain.GetBestMovePlan(gameState, AvailableMoves, TurnPhase.Move);
 
-            _logger.LogDebug($"Applico le mosse del piano {plan}");
-            foreach (var move in plan.Moves)
+            _logger.LogDebug($"Applico le mosse del piano {movementsPlan}");
+            foreach (var move in movementsPlan.Moves)
             {
                 gameState.Board.ApplyMove(move);
             }
@@ -112,7 +112,7 @@ namespace Inkognito.Core
             }
 
             // Sort pawnList
-            var sortedPawnList = Brain.SortQuerablePawnList(pawnList, Memory);
+            var sortedPawnList = Brain.SortQuerablePawnList(pawnList, Memory!);
 
             // Fase 3.5: decidi se dichiarare la missione compiuta
 
@@ -120,7 +120,7 @@ namespace Inkognito.Core
             foreach (Pawn p in sortedPawnList)
             {
                 // 2. a chi chiedo cosa? Cervello, aiutami tu...
-                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory, random);
+                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory!, random);
 
                 // 3. ask information to the player (crea la request e mandagliela)
                 PlayerInfoRequest request = new (Color, otherPlayerColor, reqType, p.Color == PlayerColor.Black);
@@ -138,20 +138,23 @@ namespace Inkognito.Core
                 Brain.ManageAnswer(answer, Memory!);
 
                 // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
-                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory)) DeclareMissionCompleted();
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
 
                 // 5. move the pawn somewhere else and apply move into the general gamestate
-                Plan dismissionPlan = Brain.ChoosePlan(gameState, new List<MoveType> { MoveType.DismissPawn }, TurnPhase.Expulsion);
+                Plan dismissionPlan = Brain.DismissPawn(p, gameState, this, Memory!);
 
-                _logger.LogDebug($"Applico le mosse del piano {plan}");
-                foreach (var move in plan.Moves)
+                _logger.LogDebug($"Applico le mosse del piano {dismissionPlan}");
+                foreach (var move in dismissionPlan.Moves)
                 {
                     gameState.Board.ApplyMove(move);
                 }
+
+                // valuta se dichiarare missione compiuta
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
             }
 
             // Fase 6: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi mandare l'ambasciatore o un player da qualche parte)
-            if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory)) DeclareMissionCompleted();
+            if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
 
             // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
             EndTurn();

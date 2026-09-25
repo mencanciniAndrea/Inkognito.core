@@ -10,7 +10,7 @@ namespace Inkognito.Core
     public class RulesEngine
     {
         private static int[] cellIdsForAmbassadorToReturn = new[] { 9, 49, 44, 24, 26, 29, 55, 2, 6, 47, 39, 34, 10, 13, 37, 54, 33 };
-        private static IReadOnlyList<Move> GetLegalMovesCurrentPlayerPawn(Pawn pawn, MoveType moveType, Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
+        private static IReadOnlyList<Move> GetLegalMovesCurrentPlayerPawn(Pawn pawn, MoveType moveType, Board gameBoard)
         {
             List<Move> legalMoves = new List<Move>();
 
@@ -71,110 +71,64 @@ namespace Inkognito.Core
         /// <param name="currentPlayer"></param>
         /// <param name="turnPhase"></param>
         /// <returns></returns>
-        private static IReadOnlyList<Move> GetLegalMovesForPlayerMovingAnotherPlayerPawn(Pawn pawn, Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
+        private static IReadOnlyList<Move> GetLegalMovesForPlayerMovingAnotherPlayerPawn(Pawn pawn, Board gameBoard, Player currentPlayer)
         {
             var moves = new List<Move>();
             var currentCell = pawn.Position;
 
-            switch (turnPhase)
-            {
-                case TurnPhase.Move:
-                    // cella corrente dove sta il pedone:
+            // cella corrente dove sta il pedone:
                     
-                    foreach(Edge e in currentCell.Edges)
-                    {
-                        var targetCell = e.Travel(currentCell);
+            foreach(Edge e in currentCell.Edges)
+            {
+                var targetCell = e.Travel(currentCell);
 
-                        var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
+                var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
 
-                        bool cellIsEmpty = pawnsOnCell.Count == 0;
-                        bool cellHasOnlyOnePawn = pawnsOnCell.Count == 1;
-                        var pawnOnCell = pawnsOnCell[0];
-                        bool pawnIsCurrentPlayerPawn = pawnOnCell.Color == currentPlayer.Color;
+                bool cellIsEmpty = pawnsOnCell.Count == 0;
+                bool cellHasOnlyOnePawn = pawnsOnCell.Count == 1;
+                var pawnOnCell = pawnsOnCell[0];
+                bool pawnIsCurrentPlayerPawn = pawnOnCell.Color == currentPlayer.Color;
 
-                        if(cellIsEmpty || cellHasOnlyOnePawn && pawnIsCurrentPlayerPawn)
-                        {
-                            moves.Add(new Move { Pawn = pawn, To = targetCell });
-                        }
-                    }
-
-                    break;
-                case TurnPhase.Expulsion:
-                    foreach (Edge e in currentCell.Edges)
-                    {
-                        var targetCell = e.Travel(currentCell);
-
-                        var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
-
-                        bool cellIsEmpty = pawnsOnCell.Count == 0;
-
-                        if (cellIsEmpty)
-                        {
-                            moves.Add(new Move { Pawn = pawn, To = targetCell });
-                        }
-                    }
-                    break;
+                if(cellIsEmpty || cellHasOnlyOnePawn && pawnIsCurrentPlayerPawn)
+                {
+                    moves.Add(new Move { Pawn = pawn, To = targetCell });
+                }
             }
 
             return moves;
         }
 
-        private static IReadOnlyList<Move> GetLegalMovesForPlayerMovingAmbassador(Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
+        private static IReadOnlyList<Move> GetLegalMovesForPlayerMovingAmbassador(Board gameBoard, Player currentPlayer)
         {
             var moves = new List<Move>();
 
             Pawn pawn = gameBoard.AmbassadorPawn;
 
-            switch (turnPhase)
+            // in questa fase, un player può muovere l'ambasciatore su qualunque casella libera oppure su una casella occupata da un suo pedone
+
+            foreach (var link in pawn.Position.Edges)
             {
-                case TurnPhase.Move:
-                    // in questa fase, un player può muovere l'ambasciatore su qualunque casella libera oppure su una casella occupata da un suo pedone
+                var targetCell = link.Travel(pawn.Position);
 
-                    foreach (var link in pawn.Position.Edges)
+                var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
+
+
+                bool targetCellIsEmpty = pawnsOnCell.Count == 0;
+                bool targetCellIsOccupiedByPawnOfCurrentPlayer = false;
+                bool thereIsOnlyOnePawn = pawnsOnCell.Count == 1;
+                foreach(Pawn p in pawnsOnCell)
+                {
+                    if(p.Color == currentPlayer.Color)
                     {
-                        var targetCell = link.Travel(pawn.Position);
-
-                        var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
-
-
-                        bool targetCellIsEmpty = pawnsOnCell.Count == 0;
-                        bool targetCellIsOccupiedByPawnOfCurrentPlayer = false;
-                        bool thereIsOnlyOnePawn = pawnsOnCell.Count == 1;
-                        foreach(Pawn p in pawnsOnCell)
-                        {
-                            if(p.Color == currentPlayer.Color)
-                            {
-                                targetCellIsOccupiedByPawnOfCurrentPlayer = true; 
-                                break;
-                            }
-
-                        }
-                        if (targetCellIsEmpty || (thereIsOnlyOnePawn && targetCellIsOccupiedByPawnOfCurrentPlayer)) 
-                        {
-                            moves.Add(new Move { Pawn = pawn, To = link.Travel(pawn.Position) });
-                        }
+                        targetCellIsOccupiedByPawnOfCurrentPlayer = true; 
+                        break;
                     }
-                    break;
-                case TurnPhase.Expulsion:
-                    // in questa fase il giocatore deve mandare l'ambasciatore in una casella colorata libera oppure all'ambasciata
-                    // è l'unico caso di mossa che "salta" tutte le altre caselle
-                    foreach (int i in cellIdsForAmbassadorToReturn)
-                    {
-                        var targetCell = gameBoard.CellsById[i];
-                        bool targetCellIsEmpty = gameBoard.CellIsEmpty(targetCell);
 
-                        if (targetCellIsEmpty)
-                        {
-                            moves.Add(new Move { Pawn = pawn, To = targetCell });
-                        }
-                    }
-                    if(moves.Count == 0)
-                    {
-                        // Qui abbiamo scoperto un bel problema
-                        Console.Error.WriteLine("Attenzione!!! Non posso mandare via l'ambasciatore!");
-                        throw new ApplicationException("Non posso mandare via l'ambasciatore!");
-                    }
-                    break;
+                }
+                if (targetCellIsEmpty || (thereIsOnlyOnePawn && targetCellIsOccupiedByPawnOfCurrentPlayer)) 
+                {
+                    moves.Add(new Move { Pawn = pawn, To = link.Travel(pawn.Position) });
+                }
             }
 
             return moves;
@@ -193,62 +147,49 @@ namespace Inkognito.Core
             return legalMoves;
         }
         /// <summary>
-        /// 
+        /// Restituisce le mosse legali per il pawn dato, sulla board data, con la mossa del tipo dato, per il currentPlayer dato.
+        /// Attenzione: vale solo come mosse legali in fase di movimento, non di allontanamento. Per l'allontamento
+        /// utilizzare GetLegalDismissionMoves
         /// <param name="pawn"></param>
         /// <param name="moveType"></param>
         /// <param name="gameBoard"></param>
         /// <returns></returns>
-        public static IReadOnlyList<Move> GetLegalMoves(Pawn pawn, MoveType moveType, Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
+        public static IReadOnlyList<Move> GetLegalMoves(Pawn pawn, MoveType moveType, Board gameBoard, Player currentPlayer)
         {
             List<Move> legalMoves = new List<Move>();
 
+            bool currentPlayerIsAmbassador = currentPlayer.Disguise == Disguise.Ambassador;
+            bool pawnIsAmbassador = pawn.Disguise == Disguise.Ambassador;
+
             // durante la fase di movimento, non puoi più spostare un pedone che sta su una casella occupata da un altro pedone
-            switch (turnPhase)
+            if (gameBoard.GetPawnsOnCell(pawn.Position).Count > 1)
             {
-                case TurnPhase.Move:
-                    if (gameBoard.GetPawnsOnCell(pawn.Position).Count > 1)
-                    {
-                        return legalMoves;
-                    }
-                    // player è ambasciatore
-                    if (currentPlayer.Disguise == Disguise.Ambassador)
-                    {
-                        legalMoves.AddRange(GetLegalMovesForAmbassadorPlayer(gameBoard));
-                    }
-
-                    // il player è colorato e muove un suo pedone
-                    else if (currentPlayer.Color == pawn.Color)
-                    {
-                        legalMoves.AddRange(GetLegalMovesCurrentPlayerPawn(pawn, moveType, gameBoard, currentPlayer, turnPhase));
-                    }
-
-                    // il player è colorato, ma muove l'ambasciatore
-                    else if (currentPlayer.Color != PlayerColor.Black && pawn.Disguise == Disguise.Ambassador && moveType == MoveType.Ambassador)
-                    {
-                        legalMoves.AddRange(GetLegalMovesForPlayerMovingAmbassador(gameBoard, currentPlayer, turnPhase));
-                    }
-
-                    // se il giocatore è colorato ma muove un pedone diverso dal suo
-                    // Questa regola vale nella versione RuleSet 2022
-                    else if (currentPlayer.Color != pawn.Color && pawn.Color != PlayerColor.Black && moveType == MoveType.AnotherPlayerPawn)
-                    {
-                        legalMoves.AddRange(GetLegalMovesForPlayerMovingAnotherPlayerPawn(pawn, gameBoard, currentPlayer, turnPhase));
-                    }
-                    break;
-                case TurnPhase.Expulsion:
-
-                    if(pawn.Color != PlayerColor.Black)
-                    {
-                        legalMoves.AddRange(GetLegalMovesForPlayerMovingAnotherPlayerPawn(pawn, gameBoard, currentPlayer, turnPhase));
-                    }
-                    else
-                    {
-                        legalMoves.AddRange(GetLegalMovesForPlayerMovingAmbassador(gameBoard, currentPlayer, turnPhase));
-                    }
-                    
-                    break;
+                return legalMoves;
+            }
+            // player è ambasciatore
+            if (currentPlayerIsAmbassador)
+            {
+                legalMoves.AddRange(GetLegalMovesForAmbassadorPlayer(gameBoard));
             }
 
+            // il player è colorato e muove un suo pedone
+            else if (currentPlayer.Color == pawn.Color)
+            {
+                legalMoves.AddRange(GetLegalMovesCurrentPlayerPawn(pawn, moveType, gameBoard));
+            }
+
+            // il player è colorato, ma muove l'ambasciatore
+            else if (!currentPlayerIsAmbassador && pawnIsAmbassador && moveType == MoveType.Ambassador)
+            {
+                legalMoves.AddRange(GetLegalMovesForPlayerMovingAmbassador(gameBoard, currentPlayer));
+            }
+
+            // se il giocatore è colorato ma muove un pedone diverso dal suo
+            // Questa regola vale nella versione RuleSet 2022
+            else if (currentPlayer.Color != pawn.Color && !pawnIsAmbassador && moveType == MoveType.AnotherPlayerPawn)
+            {
+                legalMoves.AddRange(GetLegalMovesForPlayerMovingAnotherPlayerPawn(pawn, gameBoard, currentPlayer));
+            }
             
 
             return legalMoves;
@@ -326,6 +267,72 @@ namespace Inkognito.Core
             }
 
             return true;
+        }
+
+        internal static List<Move> GetLegalDismissionMoves(Pawn p, Board board, PlayerColor color)
+        {
+            if(p.Color == PlayerColor.Black && color == PlayerColor.Black)
+            {
+                throw new ArgumentException($"Non posso allontanare l'ambasciatore per il player ambasciatore! Hai fatto un errore da qualche parte.");
+            }
+            else if(p.Color == PlayerColor.Black)
+            {
+                // allontano l'ambasciatore dal giocatore
+                return GetLegalDismissionMovesForAmbassador(p, board);
+            }
+            else if(p.Color != color)
+            {
+                return GetLegalDismissionsForPawn(p, board);
+            }
+            else
+            {
+                throw new NotImplementedException($"Imprevisto in GetLegalDismissionMoves!! pawn: {p}, board: {board}, playerColor: {color}");
+            }
+            
+        }
+
+        private static List<Move> GetLegalDismissionsForPawn(Pawn p, Board board)
+        {
+            List<Move> moves = new();
+            var currentCell = p.Position;
+            foreach (Edge e in currentCell.Edges)
+            {
+                var targetCell = e.Travel(currentCell);
+
+                var pawnsOnCell = board.GetPawnsOnCell(targetCell);
+
+                bool cellIsEmpty = pawnsOnCell.Count == 0;
+
+                if (cellIsEmpty)
+                {
+                    moves.Add(new Move { Pawn = p, To = targetCell });
+                }
+            }
+            return moves;
+        }
+
+        private static List<Move> GetLegalDismissionMovesForAmbassador(Pawn p, Board board)
+        {
+            List<Move> result = new();
+            // in questa fase il giocatore deve mandare l'ambasciatore in una casella colorata libera oppure all'ambasciata
+            // è l'unico caso di mossa che "salta" tutte le altre caselle
+            foreach (int i in cellIdsForAmbassadorToReturn)
+            {
+                var targetCell = board.CellsById[i];
+                bool targetCellIsEmpty = board.CellIsEmpty(targetCell);
+
+                if (targetCellIsEmpty)
+                {
+                    result.Add(new Move { Pawn = p, To = targetCell });
+                }
+            }
+            if (result.Count == 0)
+            {
+                // Qui abbiamo scoperto un bel problema
+                Console.Error.WriteLine("Attenzione!!! Non posso mandare via l'ambasciatore!");
+                throw new ApplicationException("Non posso mandare via l'ambasciatore!");
+            }
+            return result;
         }
     }
 }

@@ -16,9 +16,9 @@ namespace Inkognito.Core
             Planner = new MovePlanner(factory);
         }
 
-        public Plan ChoosePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
+        public Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
         {
-            var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, gameState.CurrentPlayer, turnPhase);
+            var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, gameState.CurrentPlayer);
 
             Console.Out.WriteLine($"Numero di piani possibili: {possiblePlans.Count}");
 
@@ -27,7 +27,7 @@ namespace Inkognito.Core
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
-                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, turnPhase))
+                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, TurnPhase.Move))
                 {
                     
                     EvaluatePlan(plan);
@@ -167,10 +167,21 @@ namespace Inkognito.Core
         /// <param name="p"></param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        public Plan DismissPawn(GameState gameState, Pawn p, PlayerMemory memory)
+        public Plan DismissPawn(Pawn p, GameState gameState, Player currentPlayer, PlayerMemory memory)
         {
-            // TODO pianificare le mosse per mandare via un pedone
-            return null;
+            List<Plan> dismissionPlans = new();
+            dismissionPlans.AddRange(Planner.GetDismissionPlans(p, gameState.Board, currentPlayer));
+
+            List<Plan> legalPlans = new();
+            foreach (Plan plan in dismissionPlans)
+            {
+                if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, TurnPhase.Expulsion))
+                {
+                    legalPlans.Add(plan);
+                    EvaluatePlan(plan);
+                }
+            }
+            return legalPlans[0];
         }
 
         public void ManageAnswer(PlayerAnswer answer, PlayerMemory memory)

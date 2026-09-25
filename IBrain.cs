@@ -7,9 +7,9 @@ namespace Inkognito.Core
 {
     public interface IBrain
     {
-        Plan ChoosePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase);
+        Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase);
 
-        Plan DismissPawn(GameState gameState, Pawn p, PlayerMemory memory);
+        Plan DismissPawn(Pawn p, GameState gameState, Player currentPlayer, PlayerMemory memory);
 
         /// <summary>
         /// gestisce le risposte da dare al giocatore che ti sta chiedendo informazioni
