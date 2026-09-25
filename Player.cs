@@ -101,8 +101,8 @@ namespace Inkognito.Core
             // fase 3: eseguite le mosse, si ottiene una lista di altri PEDONI (non player!) a cui chiedere le informazioni.
             // l'esecuzione delle mosse infatti è finalizzata ad ottenere questa lista oppure a spostare i propri pedoni.
 
-            // Nota: può contenere l'ambasciatore e pedine colorate. Massimo 3, ma è un dettaglio
-            List<Pawn> pawnList = new List<Pawn>();
+            // Nota: può contenere l'ambasciatore e pedine colorate. Massimo 3.
+            List<Pawn> pawnList = new ();
             foreach (var pawn in Pawns)
             {
                 Cell currentCell = pawn.Position;

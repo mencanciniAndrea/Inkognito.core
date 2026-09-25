@@ -16,40 +16,56 @@ namespace Inkognito.Core
             _logger = factory.CreateLogger<MovePlanner>();
         }
 
-        private IReadOnlyList<IReadOnlyList<MoveType>> GenerateMoveTypeCombinations(MoveType [] moveTypes)
+        private List<List<MoveType>> GenerateMoveTypeCombinations(MoveType [] moveTypes)
         {
-            List<IReadOnlyList<MoveType>> combinations = new List<IReadOnlyList<MoveType>>();
-            List<MoveType> l1 = new List<MoveType> { moveTypes[0], moveTypes[1], moveTypes[2] };
-            combinations.Add(l1);
-            List<MoveType> l2 = new List<MoveType> { moveTypes[0], moveTypes[2], moveTypes[1] };
-            combinations.Add(l2);
-            List<MoveType> l3 = new List<MoveType> { moveTypes[1], moveTypes[0], moveTypes[2] };
-            combinations.Add(l3);
-            List<MoveType> l4 = new List<MoveType> { moveTypes[1], moveTypes[2], moveTypes[0] };
-            combinations.Add(l4);
-            List<MoveType> l5 = new List<MoveType> { moveTypes[2], moveTypes[0], moveTypes[1] };
-            combinations.Add(l5);
-            List<MoveType> l6 = new List<MoveType> { moveTypes[2], moveTypes[1], moveTypes[0] };
-            combinations.Add(l6);
+            List<List<MoveType>> combinations = new()
+            {
+                new() { moveTypes[0] },
+                new() { moveTypes[1] },
+                new() { moveTypes[2] },
+                new() { moveTypes[0], moveTypes[1] },
+                new() { moveTypes[0], moveTypes[2] },
+                new() { moveTypes[1], moveTypes[0] },
+                new() { moveTypes[1], moveTypes[2] },
+                new() { moveTypes[2], moveTypes[0] },
+                new() { moveTypes[2], moveTypes[1] },
+                new() { moveTypes[0], moveTypes[1], moveTypes[2] },
+                new() { moveTypes[0], moveTypes[2], moveTypes[1] },
+                new() { moveTypes[1], moveTypes[0], moveTypes[2] },
+                new() { moveTypes[1], moveTypes[2], moveTypes[0] },
+                new() { moveTypes[2], moveTypes[0], moveTypes[1] },
+                new() { moveTypes[2], moveTypes[1], moveTypes[0] }
+            };
+            
             return combinations;
         }
 
         public IReadOnlyList<Plan> GetAllPossiblePlans(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer)
         {
-            List<Plan> allPlans = new List<Plan>();
+            // allPlans: ha come primo piano possibile il piano vuoto: sto fermo.
+            List<Plan> allPlans = new()
+            {
+                new(gameBoard)
+            };
 
-            IReadOnlyList<IReadOnlyList<MoveType>> moveTypeCombinations;
+            List<List<MoveType>> moveTypeCombinations;
 
-            if (currentPlayer.Identity != Identity.A)
+            bool currentPlayerIsAmbassador = currentPlayer.Identity == Identity.A;
+
+            if (currentPlayerIsAmbassador)
+            {
+                moveTypeCombinations = new()
+                {
+                    new() { MoveType.Ambassador },                      // muoversi di 1
+                    new() { MoveType.Ambassador, MoveType.Ambassador }  // muoversi di 2
+                };
+            }
+            else
             {
                 MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
                 moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
             }
-            else
-            {
-                moveTypeCombinations = new List<List<MoveType>> { new() { moveTypes.ElementAt(0), moveTypes.ElementAt(1) } };
-            }
-
+            
             foreach (var combination in moveTypeCombinations)
             {
                 var plans = ComposePlans(gameBoard, combination, currentPlayer);
@@ -66,7 +82,7 @@ namespace Inkognito.Core
         /// <param name="currentPlayer"></param>
         /// <param name="turnPhase"></param>
         /// <returns></returns>
-        public IReadOnlyList<Move> GenerateLegalMoves(Board gameBoard, MoveType moveType, Player currentPlayer)
+        public IReadOnlyList<Move> GenerateLegalMovesForAllPawns(Board gameBoard, MoveType moveType, Player currentPlayer)
         {
             List<Move> legalMoves = new ();
             if (moveType == MoveType.Ambassador)
@@ -121,10 +137,10 @@ namespace Inkognito.Core
                 
                 if (candidatePlans.Count == 0)
                 {
-                    var legalMoves = GenerateLegalMoves(gameBoard, moveType, currentPlayer);
+                    var legalMoves = GenerateLegalMovesForAllPawns(gameBoard, moveType, currentPlayer);
                     foreach (var move in legalMoves)
                     {
-                        Plan plan = new Plan (gameBoard);
+                        Plan plan = new(gameBoard);
                         plan.AddMove(move);
                         candidatePlans.Add(plan);
                     }
@@ -135,7 +151,7 @@ namespace Inkognito.Core
                     foreach (var existingPlan in candidatePlans)
                     {
                         Board newBoard = existingPlan.resultingBoard.Clone();
-                        var legalMoves = GenerateLegalMoves(newBoard, moveType, currentPlayer);
+                        var legalMoves = GenerateLegalMovesForAllPawns(newBoard, moveType, currentPlayer);
                         if (legalMoves.Count == 0)
                         {
                             // non toccare niente, sennò si perde la lista delle mosse legali
@@ -148,14 +164,15 @@ namespace Inkognito.Core
                             newPlans.Add(newPlan);
                         }
                     }
-                    //candidatePlans = newPlans;    // --> questo eliminava tutti i piani precedenti, quelli da una mossa o da due.
+                    candidatePlans = newPlans;    // --> questo eliminava tutti i piani precedenti, quelli da una mossa o da due.
                                                     // invece dobbiamo tenerli tutti, perché non sei obbligato a usare tutte le mosse.
-                    candidatePlans.AddRange(newPlans);
+                                                    // 2026.09.25 questa cosa l'ho spostata fuori
+                    //candidatePlans.AddRange(newPlans);
                 }
             }
 
             // ultimo passaggio: il RulesEgine scarta i piani che non sono legali
-            List<Plan> result = new List<Plan>();
+            List<Plan> result = new ();
             foreach (var plan in candidatePlans)
             {
                 if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, TurnPhase.Move))
