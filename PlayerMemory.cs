@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Numerics;
 using System.Text;
 
 namespace Inkognito.Core
@@ -38,6 +40,16 @@ namespace Inkognito.Core
                 if (k.About == c) return k;
             }
             throw new ArgumentException($"Colore {c} non trovato!");
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new();
+            foreach(var k in KnowledgeAboutOtherPlayers)
+            {
+                sb.AppendLine($"{k}");
+            }
+            return sb.ToString();
         }
 
     }

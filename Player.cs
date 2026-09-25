@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace Inkognito.Core
 {
@@ -16,7 +17,7 @@ namespace Inkognito.Core
 
         private readonly ILogger<Player> _logger;
 
-        private Random random;
+        private readonly Random _random;
 
         public string Name { get; }
         public PlayerType Type { get; internal set; } = PlayerType.Human;
@@ -53,13 +54,14 @@ namespace Inkognito.Core
             Pawns = Array.AsReadOnly(pawns);
             Brain = new LazyBrain(loggerFactory); //TODO: non ci deve essere solo un LazyBrain!!!
             _logger = loggerFactory.CreateLogger<Player>();
-            random = r;
+            _random = r;
 
         }
 
         public void InitMemory(List<Player> allPlayers)
         {
-            Memory = new PlayerMemory(allPlayers.Where(p => p.Color != Color), this);
+            List<Player> otherPlayers = allPlayers.Where(p => p.Color != Color).ToList();
+            Memory = new PlayerMemory(otherPlayers, this);
         }
 
         public void PlayTurn(GameState gameState)
@@ -69,24 +71,15 @@ namespace Inkognito.Core
             if (!ReferenceEquals(gameState.CurrentPlayer, this))
                 throw new InvalidOperationException("Può giocare soltanto il giocatore corrente della partita.");
 
-            if (Identity == Identity.A)
-            {
-                // Ambasciatore. Il giocatore può muoversi di 1 o 2 spazi, a prescindere dal tipo, ed incontrare solo un altro giocatore. Se incontra un altro giocatore, può chiedere informazioni di qualsiasi tipo.
-                // lo implementiamo dopo, tanto nel ruleset v1 non c'è la possibilità di giocare come ambasciatore. Per ora, se il giocatore è ambasciatore, non può fare nulla.
-                AvailableMoves = new List<MoveType>{ MoveType.Ambassador, MoveType.Ambassador};
-            }
-            else
-            {
-                // fase 1: recuperare le mosse disponibili per il giocatore corrente
-                AvailableMoves = gameState.prophecyPhantom.DrawMoves();
-            }
+            bool IAmAmbassador = Identity == Identity.A;
+            AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
+                gameState.prophecyPhantom.DrawMoves();
 
-            _logger.LogDebug($"Mosse disponibili:");
-            foreach (var move in AvailableMoves)
-            {
-                // qui si potrebbe fare un controllo per vedere se il giocatore ha abbastanza pedoni per fare la mossa, ma per ora lo facciamo dopo
-                _logger.LogDebug($"{move},");
-            }
+            StringBuilder sb = new();
+            sb.Append("Mosse disponibili: {");
+            sb.AppendJoin(",",AvailableMoves);
+            sb.Append("}");
+            _logger.LogDebug(sb.ToString());
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
@@ -120,7 +113,7 @@ namespace Inkognito.Core
             foreach (Pawn p in sortedPawnList)
             {
                 // 2. a chi chiedo cosa? Cervello, aiutami tu...
-                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory!, random);
+                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory!, _random);
 
                 // 3. ask information to the player (crea la request e mandagliela)
                 PlayerInfoRequest request = new (Color, otherPlayerColor, reqType, p.Color == PlayerColor.Black);
@@ -181,6 +174,21 @@ namespace Inkognito.Core
         public void EndTurn()
         {
             //TODO: fine turno dichiarata. Questo giocatore non può più dichiarare Missione Compiuta.
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new();
+            sb.AppendLine($"{Name}: {Type}, {Color}, {Identity}, {Disguise}, {Mission}");
+            sb.AppendJoin(",", Pawns);
+            sb.AppendLine();
+            sb.AppendLine("Memory: ");
+            if (Memory != null)
+            {
+                sb.AppendLine($"{Memory}");
+                
+            }
+            return sb.ToString();
         }
 
     }

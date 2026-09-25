@@ -197,11 +197,20 @@ namespace Inkognito.Core
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (var pawn in Pawns)
+            StringBuilder sb = new();
+
+            for(int c = 0; c <= (int) PlayerColor.Yellow; c++)
             {
-                sb.AppendLine($"{pawn}");
+                foreach (var p in Pawns)
+                {
+                    if (p.Color == (PlayerColor)c)
+                    {
+                        sb.Append($"{p}".PadRight(15));
+                    }
+                }
+                sb.AppendLine();
             }
+
             return sb.ToString();
         }
     }

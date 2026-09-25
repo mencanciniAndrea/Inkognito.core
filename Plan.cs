@@ -42,15 +42,19 @@ namespace Inkognito.Core
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
+            sb.Append("Moves: { ");
             foreach (var move in Moves)
             {
                 sb.Append(move.ToString());
                 sb.Append(" -> ");
             }
+            
             if (Moves.Count > 0)
                 sb.Length -= 4; // Remove the last " -> "
+
+            sb.Append(" }");
             sb.AppendLine();
-            sb.Append("Brings to: ");
+            sb.AppendLine("Brings to: ");
             sb.AppendLine(resultingBoard.ToString());
             return sb.ToString();
         }

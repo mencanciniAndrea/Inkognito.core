@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 
 namespace Inkognito.Core
@@ -88,6 +89,63 @@ namespace Inkognito.Core
         public void AddAnswerGiven(PlayerAnswer answer)
         {
             AnswersGiven.Add(answer);
+        }
+
+        public override string ToString()
+        {
+            const int columnWidth = 10;
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"Knows About {About}:");
+            sb.AppendLine($"Identity: {AssuredIdentity}, Disguise:{AssuredDisguise} Mission: {AssignedMission}");
+
+            // Header
+            sb.AppendLine("Possibilities:");
+            sb.Append("".PadRight(columnWidth));
+            for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+            {
+                sb.Append(((Identity)id).ToString().PadRight(columnWidth));
+            }
+            sb.AppendLine();
+            // Separator
+            sb.AppendLine(new string('-', columnWidth * (5)));
+            for (int disg = 1; disg < (int) Disguise.DON_T_KNOW; disg++)
+            {
+                sb.Append(((Disguise)disg).ToString().PadRight(columnWidth));
+
+                for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+                {
+                    string value = WhatIKnowAboutHim[id, disg] ? "True" : "False";
+                    sb.Append(value.PadRight(columnWidth));
+                }
+
+                sb.AppendLine();
+            }
+
+
+            sb.AppendLine("What he knows about me:");
+            // Header
+            sb.Append("".PadRight(columnWidth));
+            for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+            {
+                sb.Append(((Identity)id).ToString().PadRight(columnWidth));
+            }
+            sb.AppendLine();
+            // Separator
+            sb.AppendLine(new string('-', columnWidth * (5)));
+            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+            {
+                sb.Append(((Disguise)disg).ToString().PadRight(columnWidth));
+
+                for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+                {
+                    string value = WhatHeKnowsAboutMe[id, disg] ? "True" : "False";
+                    sb.Append(value.PadRight(columnWidth));
+                }
+
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
         }
     }
 }

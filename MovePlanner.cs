@@ -16,28 +16,54 @@ namespace Inkognito.Core
             _logger = factory.CreateLogger<MovePlanner>();
         }
 
+
         private List<List<MoveType>> GenerateMoveTypeCombinations(MoveType [] moveTypes)
         {
-            List<List<MoveType>> combinations = new()
+            List<List<MoveType>> none = new();
+            if (moveTypes.Length == 1)
             {
-                new() { moveTypes[0] },
-                new() { moveTypes[1] },
-                new() { moveTypes[2] },
-                new() { moveTypes[0], moveTypes[1] },
-                new() { moveTypes[0], moveTypes[2] },
-                new() { moveTypes[1], moveTypes[0] },
-                new() { moveTypes[1], moveTypes[2] },
-                new() { moveTypes[2], moveTypes[0] },
-                new() { moveTypes[2], moveTypes[1] },
-                new() { moveTypes[0], moveTypes[1], moveTypes[2] },
-                new() { moveTypes[0], moveTypes[2], moveTypes[1] },
-                new() { moveTypes[1], moveTypes[0], moveTypes[2] },
-                new() { moveTypes[1], moveTypes[2], moveTypes[0] },
-                new() { moveTypes[2], moveTypes[0], moveTypes[1] },
-                new() { moveTypes[2], moveTypes[1], moveTypes[0] }
-            };
-            
-            return combinations;
+                List<List<MoveType>> one = new()
+                {
+                    new() { moveTypes[0] },
+                };
+                return one;
+            }
+
+            if(moveTypes.Length == 2)
+            {
+                List<List<MoveType>> two = new()
+                {
+                    new() { moveTypes[0] },
+                    new() { moveTypes[1] },
+                    new() { moveTypes[0], moveTypes[1] },
+                    new() { moveTypes[1], moveTypes[0] },
+                };
+                return two;
+            }
+
+            if (moveTypes.Length == 3)
+            {
+                List<List<MoveType>> three = new()
+                {
+                    new() { moveTypes[0] },
+                    new() { moveTypes[1] },
+                    new() { moveTypes[2] },
+                    new() { moveTypes[0], moveTypes[1] },
+                    new() { moveTypes[0], moveTypes[2] },
+                    new() { moveTypes[1], moveTypes[0] },
+                    new() { moveTypes[1], moveTypes[2] },
+                    new() { moveTypes[2], moveTypes[0] },
+                    new() { moveTypes[2], moveTypes[1] },
+                    new() { moveTypes[0], moveTypes[1], moveTypes[2] },
+                    new() { moveTypes[0], moveTypes[2], moveTypes[1] },
+                    new() { moveTypes[1], moveTypes[0], moveTypes[2] },
+                    new() { moveTypes[1], moveTypes[2], moveTypes[0] },
+                    new() { moveTypes[2], moveTypes[0], moveTypes[1] },
+                    new() { moveTypes[2], moveTypes[1], moveTypes[0] }
+                };
+                return three;
+            }
+            return none;
         }
 
         public IReadOnlyList<Plan> GetAllPossiblePlans(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer)
@@ -62,8 +88,8 @@ namespace Inkognito.Core
             }
             else
             {
-                MoveType[] moveTypeArray = new[] { moveTypes.ElementAt(0), moveTypes.ElementAt(1), moveTypes.ElementAt(2) };
-                moveTypeCombinations = GenerateMoveTypeCombinations(moveTypeArray);
+                var moves = moveTypes.Where(t => t != MoveType.None).ToArray();
+                moveTypeCombinations = GenerateMoveTypeCombinations(moves);
             }
             
             foreach (var combination in moveTypeCombinations)

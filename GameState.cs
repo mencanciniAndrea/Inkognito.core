@@ -17,7 +17,7 @@ namespace Inkognito.Core
         public int CurrentPlayerIndex { get; private set; }
         public Player CurrentPlayer => Players[CurrentPlayerIndex]!;
 
-        public Player AmbassadorPlayer { get; private set; }
+        public Player? AmbassadorPlayer { get; private set; }
         /// <summary>Cinque posti: Red, Blue, Green, Yellow, Black. I posti assenti sono null.</summary>
         public IReadOnlyList<Player?> Players { get; }
         /// <summary>Seed della partita; null se viene fornito direttamente un Random esterno.</summary>
@@ -87,9 +87,34 @@ namespace Inkognito.Core
             AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
-            List<Pawn> pawns = new List<Pawn> {};
+            List<Pawn> pawns = new List<Pawn> { };
 
             var players = new Player?[playerNames.Length];
+            CreatePlayers(playerNames, random, loggerFactory, identities, disguises, missions, colors, pawns, players);
+
+            if (GetPlayerByColor(PlayerColor.Black) == null)
+            {
+                pawns.Add(AmbassadorPawn);
+            }
+
+            Board.Pawns = pawns;
+
+
+            // Creazione del ProphecyPhantom
+            prophecyPhantom = new ProphecyPhantom(random);
+
+            // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.
+            Players = Array.AsReadOnly(players);
+            var occupiedSlots = Enumerable.Range(0, Players.Count)
+                .Where(index => Players[index] is not null).ToArray();
+
+            CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
+            // TODO: mandare la carta PLAYER_START al giocatore che inizia il turno
+
+        }
+
+        private void CreatePlayers(string?[] playerNames, Random random, ILoggerFactory loggerFactory, List<Identity> identities, List<Disguise> disguises, List<MissionPart> missions, PlayerColor[] colors, List<Pawn> pawns, Player?[] players)
+        {
             for (int i = 0; i < playerNames.Length; i++)
             {
                 var playerName = playerNames[i];
@@ -104,23 +129,10 @@ namespace Inkognito.Core
                         CreatePawns(colors[i], random), loggerFactory, random);
                 pawns.AddRange(players[i]!.Pawns);
             }
-
-            if(GetPlayerByColor(PlayerColor.Black) == null)
+            foreach(Player p in players)
             {
-                pawns.Add(AmbassadorPawn);
+                if (p != null) p.InitMemory(new(players!));
             }
-
-            Board.Pawns = pawns;
-
-            // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.
-            Players = Array.AsReadOnly(players);
-            var occupiedSlots = Enumerable.Range(0, Players.Count)
-                .Where(index => Players[index] is not null).ToArray();
-
-            CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
-
-            // Creazione del ProphecyPhantom
-            prophecyPhantom = new ProphecyPhantom(random);
         }
 
         public Pawn? GetPawnOf(Identity id)
@@ -159,6 +171,8 @@ namespace Inkognito.Core
         public void PlayTurn()
         {
             CurrentPlayer.PlayTurn(this);
+
+            // TODO: verificare se qualcuno ha dichiarato missione compiuta e compiere le dovute verifiche
         }
 
         /// <summary>Stampa lo stato completo di debug, comprese le informazioni segrete dei giocatori.</summary>
@@ -174,11 +188,8 @@ namespace Inkognito.Core
             {
                 if (player is null)
                     continue;
-                writer.WriteLine($"{player.Name}: Type={player.Type}, Color={player.Color}, Identity={player.Identity}, Disguise={player.Disguise}, Mission={player.Mission}");
-                if (player.AvailableMoves.Count > 0)
-                    writer.WriteLine($"Ultima estrazione di {player.Name}: {string.Join(", ", player.AvailableMoves)}");
-                foreach (var pawn in player.Pawns)
-                    writer.WriteLine($"{pawn.Disguise}-{pawn.Color}: {pawn.Position.Id}");
+                writer.WriteLine($"{player}");
+                
             }
         }
 
