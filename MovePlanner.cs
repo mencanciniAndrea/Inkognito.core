@@ -68,7 +68,7 @@ namespace Inkognito.Core
         /// <returns></returns>
         public IReadOnlyList<Move> GenerateLegalMoves(Board gameBoard, MoveType moveType, Player currentPlayer)
         {
-            List<Move> legalMoves = new List<Move>();
+            List<Move> legalMoves = new ();
             if (moveType == MoveType.Ambassador)
             {
                 var moves = RulesEngine.GetLegalMoves(gameBoard.AmbassadorPawn, moveType, gameBoard, currentPlayer);
@@ -110,7 +110,7 @@ namespace Inkognito.Core
         /// <returns></returns>
         public IReadOnlyList<Plan> ComposePlans(Board gameBoard, IEnumerable<MoveType> moveTypes, Player currentPlayer)
         {
-            List<Plan> candidatePlans = new List<Plan>();
+            List<Plan> candidatePlans = new();
 
             foreach (var moveType in moveTypes)
             {
