@@ -1,17 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Inkognito.Core
 {
     public class Plan
     {
+        public HashSet<PlanTraits> Traits { get; private set; }
         public List<Move> Moves { get; private set; }
 
         public Board resultingBoard { get; private set; }
 
         public Plan(Board originalBoard)
         {
+            Traits = new HashSet<PlanTraits>();
             Moves = new List<Move>();
             resultingBoard = originalBoard.Clone();
         }
@@ -53,6 +56,9 @@ namespace Inkognito.Core
                 sb.Length -= 4; // Remove the last " -> "
 
             sb.Append(" }");
+            sb.AppendLine();
+            sb.Append("Traits: ");
+            sb.AppendJoin(",", Traits.ToArray());
             sb.AppendLine();
             sb.AppendLine("Brings to: ");
             sb.AppendLine(resultingBoard.ToString());

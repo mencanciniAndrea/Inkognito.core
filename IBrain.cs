@@ -39,7 +39,7 @@ namespace Inkognito.Core
 
         bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory);
 
-        void EvaluatePlan(Plan plan);
+        void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase);
 
     }
 }

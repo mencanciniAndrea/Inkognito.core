@@ -21,7 +21,8 @@ namespace Inkognito.Core
 
         public Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
         {
-            var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, gameState.CurrentPlayer);
+            Player me = gameState.CurrentPlayer;
+            var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, me);
 
             Console.Out.WriteLine($"Numero di piani possibili: {possiblePlans.Count}");
 
@@ -30,15 +31,15 @@ namespace Inkognito.Core
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
-                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, gameState.CurrentPlayer, TurnPhase.Move))
+                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, me, TurnPhase.Move))
                 {
                     
-                    EvaluatePlan(plan);
+                    EvaluatePlan(plan, gameState, turnPhase);
 
-                    Console.Out.WriteLine($"Piano #{i}: {plan}");
+                    //Console.Out.WriteLine($"Piano #{i}: {plan}");
 
                     // controllare che il piano non ti faccia tornare da dove sei partito e che non ti faccia tornare su una casella già visitata
-                    HashSet<int> visitedCells = new HashSet<int>();
+                    HashSet<int> visitedCells = new ();
 
                     bool dummyPlan = false;
 
@@ -70,14 +71,170 @@ namespace Inkognito.Core
             // super-lazy... scegli il primo che non sia vuoto, se c'è.
             Plan[] chooseFrom = plausiblePlans.Where(p => p.Moves.Count() > 0).ToArray();
             if (chooseFrom.Length == 0)
+            {
                 return plausiblePlans[0];
+            }
             else
-                return chooseFrom[0];
+            {
+                Plan result = chooseFrom[0];
+
+                foreach (Plan p in chooseFrom)
+                {
+                    bool decisionMade = false;
+
+                    if (result.Traits.Contains(PlanTraits.MEET_AMBASSADOR) || p.Traits.Contains(PlanTraits.MEET_AMBASSADOR))
+                    {
+                        if(result.Traits.Contains(PlanTraits.MEET_AMBASSADOR) && p.Traits.Contains(PlanTraits.MEET_AMBASSADOR))
+                        {
+                            decisionMade = false;
+                        }
+                        else if(!result.Traits.Contains(PlanTraits.MEET_AMBASSADOR) && p.Traits.Contains(PlanTraits.MEET_AMBASSADOR))
+                        {
+                            decisionMade = true;
+                            result = p;
+                        }else
+                        {
+                            decisionMade = true;
+                        }
+                    }
+                    if (!decisionMade)
+                    {
+                        if(result.Traits.Contains(PlanTraits.MEET_UNKNOWN_PLAYER) || p.Traits.Contains(PlanTraits.MEET_UNKNOWN_PLAYER))
+                        {
+                            if(result.Traits.Contains(PlanTraits.MEET_UNKNOWN_PLAYER) && !p.Traits.Contains(PlanTraits.MEET_UNKNOWN_PLAYER))
+                            {
+                                decisionMade = true;
+                            }
+                            else
+                            {
+                                result = p;
+                                decisionMade = true;
+                            }
+                        }
+                    }
+                    if (!decisionMade)
+                    {
+                        bool resultGoesNearAmbassador = result.Traits.Contains(PlanTraits.GET_NEAR_AMBASSADOR);
+                        bool pGoesNearAmbassador = p.Traits.Contains(PlanTraits.GET_NEAR_AMBASSADOR);
+                        if (resultGoesNearAmbassador || pGoesNearAmbassador)
+                        {
+                            if(resultGoesNearAmbassador && !pGoesNearAmbassador)
+                            {
+                                decisionMade = true;
+                            }
+                            else
+                            {
+                                result = p;
+                                decisionMade = true;
+                            }
+                        }
+                    }
+                    if (!decisionMade)
+                    {
+                        bool resultGoesNearPlayer = result.Traits.Contains(PlanTraits.GET_NEAR_PLAYER);
+                        bool pGoesNearPlayer = p.Traits.Contains(PlanTraits.GET_NEAR_PLAYER);
+                        if(resultGoesNearPlayer || pGoesNearPlayer)
+                        {
+                            if(resultGoesNearPlayer && !pGoesNearPlayer)
+                            {
+                                decisionMade = true;
+                            }
+                            else
+                            {
+                                result = p;
+                                decisionMade = true;
+                            }
+                        }
+                    }
+                    // TODO questo è da completare, ma per adesso vediamo se vengono scelti piani decenti
+                }
+                return result;
+            }
+                
         }
 
-        public void EvaluatePlan(Plan plan)
+        public void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase)
         {
-            //TODO implementare!
+            Pawn ambassador = plan.resultingBoard.AmbassadorPawn;
+            if(gameState.CurrentPlayer.Identity == Identity.A)
+            {
+                EvaluateForAmbassador(plan, gameState.CurrentPlayer, phase);
+            }
+            else
+            {
+                EvaluateForColoredPlayer(plan, gameState.CurrentPlayer, ambassador, phase);
+            }
+        }
+
+        private static void EvaluateForColoredPlayer(Plan plan, Player me, Pawn ambassador, TurnPhase phase)
+        {
+
+            foreach (Pawn p in plan.resultingBoard.Pawns)
+            {
+                if (p != ambassador)
+                {
+                    if (p.Color == me.Color)
+                    {
+                        var pawnsOnCell = plan.resultingBoard.GetPawnsOnCell(p.Position);
+                        if (pawnsOnCell.Count > 1)
+                        {
+                            foreach (Pawn x in pawnsOnCell)
+                            {
+                                if (x.Color != p.Color)
+                                {
+                                    if (x.Color == PlayerColor.Black)
+                                    {
+                                        plan.Traits.Add(PlanTraits.MEET_AMBASSADOR);
+                                    }
+                                    else
+                                    {
+                                        var otherPlayerColor = x.Color;
+                                        var k = me.Memory!.GetPlayerKnowledge(otherPlayerColor);
+                                        if (k.AssuredIdentity == Identity.DON_T_KNOW)
+                                        {
+                                            plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
+                                        }
+                                        else
+                                        {
+                                            if (k.IsMyPartner == YES_OR_NO.YES)
+                                            {
+                                                plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void EvaluateForAmbassador(Plan plan, Player me, TurnPhase phase)
+        {
+            var pawnsOnCell = plan.resultingBoard.GetPawnsOnCell(plan.resultingBoard.AmbassadorPawn.Position);
+            if (pawnsOnCell.Count > 1)
+            {
+                foreach (Pawn x in pawnsOnCell)
+                {
+                    if (x.Color != PlayerColor.Black)
+                    {
+                        var otherPlayerColor = x.Color;
+                        var k = me.Memory!.GetPlayerKnowledge(otherPlayerColor);
+                        if (k.AssuredIdentity == Identity.DON_T_KNOW)
+                        {
+                            plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
+                        }
+                        else
+                        {
+                            if (k.IsMyPartner == YES_OR_NO.YES)
+                            {
+                                plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -303,8 +460,12 @@ namespace Inkognito.Core
                 if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, TurnPhase.Expulsion))
                 {
                     legalPlans.Add(plan);
-                    EvaluatePlan(plan);
+                    EvaluatePlan(plan, gameState, TurnPhase.Expulsion);
                 }
+            }
+            if (legalPlans.Count == 0)
+            {
+                return dismissionPlans[0];
             }
             return legalPlans[0];
         }
@@ -366,6 +527,7 @@ namespace Inkognito.Core
                         case InkognitoCardType.MISSION:
                             // Qui non c'è da fare ragionamenti. Mi ha fatto vedere la missione. Va bene così, sia che è mio compagno che non (nell'ultimo caso mi sta ingannando).
                             k.AssignedMission = (MissionPart)a.Value;
+
                             break;
                         default:
                             throw new ArgumentException($"Card Type {a.Type} not valid at this point!");
@@ -413,6 +575,10 @@ namespace Inkognito.Core
                     {
                         k.IsMyPartner = YES_OR_NO.NO;
                     }
+                }
+                else
+                {
+                    k.IsMyPartner = YES_OR_NO.NO;
                 }
 
                 for(int c = 1; c < 5; c++)

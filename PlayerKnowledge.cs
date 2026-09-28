@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 
@@ -35,6 +36,7 @@ namespace Inkognito.Core
         public MissionPart AssignedMission { get; set; } 
 
         public YES_OR_NO IsMyPartner { get; set; }
+        public bool KnowsMyMission { get; set; }
 
         public PlayerKnowledge(PlayerColor p, Player me)
         {
@@ -43,10 +45,21 @@ namespace Inkognito.Core
             AnswersGiven = new List<PlayerAnswer>();
             AnswersToIdentityToGive = new List<PlayerAnswer>();
             AnswersToDisguiseToGive = new List<PlayerAnswer>();
-            IsMyPartner = YES_OR_NO.DONT_KNOW;
-
-            InitGivableIdentityAnswers(me);
-            InitGivableDisguiseAnswers(me);
+            if (me.Identity == Identity.A)
+            {
+                IsMyPartner = YES_OR_NO.NO;
+                KnowsMyMission = true;
+            }
+            if(p == PlayerColor.Black)
+            {
+                IsMyPartner = YES_OR_NO.NO;
+                AssignedMission = MissionPart.FindAllIdentities;
+            }
+            else
+            {
+                InitGivableIdentityAnswers(me);
+                InitGivableDisguiseAnswers(me);
+            }
 
             WhatIKnowAboutHim = new bool[5, 5];
             WhatHeKnowsAboutMe = new bool[5, 5];
@@ -91,6 +104,7 @@ namespace Inkognito.Core
                 }
             }
         }
+
         /// <summary>
         /// Genera le risposte fornibili ad una richiesta di identità
         /// </summary>
@@ -208,8 +222,6 @@ namespace Inkognito.Core
         public void AddAnswerReceived(PlayerAnswer answer)
         {
             AnswersReceived.Add(answer);
-
-            
         }
 
         public void AddAnswerGiven(PlayerAnswer answer)
@@ -222,7 +234,7 @@ namespace Inkognito.Core
             const int columnWidth = 10;
             StringBuilder sb = new StringBuilder();
             sb.AppendLine($"Knows About {About}:");
-            sb.AppendLine($"Identity: {AssuredIdentity}, Disguise:{AssuredDisguise} Mission: {AssignedMission}");
+            sb.AppendLine($"{AssuredIdentity}, {AssuredDisguise}, is my partner: {IsMyPartner}; Mission: {AssignedMission}");
 
             // Header
             sb.AppendLine("Possibilities:");
