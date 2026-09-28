@@ -9,5 +9,12 @@ namespace Inkognito.Core
         public InkognitoCardVisibility Visibility { get; set; }
         public InkognitoCardType Type { get; set; }
         public int Value { get; set; }
+
+        public InkognitoCard(InkognitoCardVisibility v, InkognitoCardType t, int val)
+        {
+            Visibility = v;
+            Type = t;
+            Value = val;
+        }
     }
 }

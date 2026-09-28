@@ -13,7 +13,10 @@ namespace Inkognito.Core
 
         List<PlayerAnswer> AnswersReceived { get; }
 
-        List<PlayerAnswer> AnswersGiven { get; }
+        public List<PlayerAnswer> AnswersGiven { get; }
+
+        public List<PlayerAnswer> AnswersToIdentityToGive { get; }
+        public List<PlayerAnswer> AnswersToDisguiseToGive { get; }
 
         /// <summary>
         /// rappresenta la matrice di accoppiamenti Identity, Disguise possibili che l'altro giocatore potrebbe assumere in funzione di quello che mi ha comunicato
@@ -31,13 +34,23 @@ namespace Inkognito.Core
 
         public MissionPart AssignedMission { get; set; } 
 
+        public YES_OR_NO IsMyPartner { get; set; }
+
         public PlayerKnowledge(PlayerColor p, Player me)
         {
             About = p;
             AnswersReceived = new List<PlayerAnswer>();
             AnswersGiven = new List<PlayerAnswer>();
+            AnswersToIdentityToGive = new List<PlayerAnswer>();
+            AnswersToDisguiseToGive = new List<PlayerAnswer>();
+            IsMyPartner = YES_OR_NO.DONT_KNOW;
+
+            InitGivableIdentityAnswers(me);
+            InitGivableDisguiseAnswers(me);
+
             WhatIKnowAboutHim = new bool[5, 5];
-            WhatHeKnowsAboutMe  = new bool[5, 5];
+            WhatHeKnowsAboutMe = new bool[5, 5];
+
 
             if (p != PlayerColor.Black)
             {
@@ -45,9 +58,9 @@ namespace Inkognito.Core
                 AssuredDisguise = Disguise.DON_T_KNOW;
                 AssignedMission = MissionPart.DON_T_KNOW;
 
-                for(int identity = 1; identity < (int) Identity.DON_T_KNOW; identity++)
+                for (int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
                 {
-                    for (int disguise = 1; disguise < (int) Disguise.DON_T_KNOW; disguise++)
+                    for (int disguise = 1; disguise < (int)Disguise.DON_T_KNOW; disguise++)
                     {
                         if (identity == (int)me.Identity || disguise == (int)me.Disguise)
                         {
@@ -70,13 +83,126 @@ namespace Inkognito.Core
             }
 
             // WhatHeKnowsAboutMe - vale per tutti, anche per l'ambasciatore
-            for(int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
+            for (int identity = 1; identity < (int)Identity.DON_T_KNOW; identity++)
             {
-                for(int disguise = 1; disguise < (int) Disguise.DON_T_KNOW; disguise++)
+                for (int disguise = 1; disguise < (int)Disguise.DON_T_KNOW; disguise++)
                 {
                     WhatHeKnowsAboutMe[identity, disguise] = true;
                 }
             }
+        }
+        /// <summary>
+        /// Genera le risposte fornibili ad una richiesta di identità
+        /// </summary>
+        /// <param name="me"></param>
+        private void InitGivableIdentityAnswers(Player me)
+        {
+            // Inizializziamo la lista delle risposte che si possono dare
+            // all'identity request:
+            List<Identity> otherIdentities = new();
+            for (int id = 1; id < (int)Identity.DON_T_KNOW; id++)
+            {
+                if (id != (int)me.Identity)
+                    otherIdentities.Add((Identity)id);
+            }
+            // le prime 12, con la mia identità
+            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+            {
+                foreach (Identity tId in otherIdentities)
+                {
+                    List<InkognitoCard> answers = new()
+                    {
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity),
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)tId),
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)disg)
+                    };
+                    PlayerAnswer currAns = new() { Answers = answers };
+                    AnswersToIdentityToGive.Add(currAns);
+                }
+            }
+
+            // le ultime 3, con le identità che non mi appartengono
+            PlayerAnswer cAns = new()
+            {
+                Answers = new()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[0]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[1]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise)
+                }
+            };
+            AnswersToIdentityToGive.Add(cAns);
+
+            cAns = new()
+            {
+                Answers = new()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[1]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[2]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise)
+                }
+            };
+         
+            AnswersToIdentityToGive.Add(cAns);
+
+            cAns = new()
+            {
+                Answers = new List<InkognitoCard>()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[0]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIdentities[2]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise)
+                }
+            };
+            
+            AnswersToIdentityToGive.Add(cAns);
+        }
+
+        /// <summary>
+        /// genera le risposte fornibili ad una richiesta di travestimento
+        /// </summary>
+        /// <param name="me"></param>
+        private void InitGivableDisguiseAnswers(Player me)
+        {
+            List<Disguise> otherDisguises = new();
+            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+            {
+                if (disg != (int)me.Disguise)
+                {
+                    otherDisguises.Add((Disguise)disg);
+                }
+            }
+            // le prime 12, con il mio travestimento
+            for (int currId = 1; currId < (int)Identity.DON_T_KNOW; currId++)
+            {
+                foreach (Disguise currDisguise in otherDisguises)
+                {
+                    PlayerAnswer currAns = new();
+                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise));
+                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)currDisguise));
+                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)currId));
+                    AnswersToDisguiseToGive.Add(currAns);
+                }
+            }
+
+            // le ultime 3, con i travestimenti falsi
+            PlayerAnswer cAns = new();
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            AnswersToDisguiseToGive.Add(cAns);
+
+            cAns = new();
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            AnswersToDisguiseToGive.Add(cAns);
+
+            cAns = new();
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]));
+            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            AnswersToDisguiseToGive.Add(cAns);
         }
 
         public void AddAnswerReceived(PlayerAnswer answer)

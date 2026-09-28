@@ -28,6 +28,8 @@ namespace Inkognito.Core
         public IReadOnlyList<Pawn> Pawns { get; }
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
+        public PlayerObjective currentObjective { get; private set; }
+
         //----------------------------------------------------------------------
         //
         // Intelligence Section
@@ -55,7 +57,7 @@ namespace Inkognito.Core
             Brain = new LazyBrain(loggerFactory); //TODO: non ci deve essere solo un LazyBrain!!!
             _logger = loggerFactory.CreateLogger<Player>();
             _random = r;
-
+            currentObjective = PlayerObjective.FIND_PARTNER;
         }
 
         public void InitMemory(List<Player> allPlayers)
@@ -112,13 +114,22 @@ namespace Inkognito.Core
             // fase 4: se la lista di player a cui chiedere informazioni non è vuota, si chiede a ciascuno di loro le informazioni richieste del tipo richiesto
             foreach (Pawn p in sortedPawnList)
             {
+                PlayerColor pColorToAsk = p.Color;
                 // 2. a chi chiedo cosa? Cervello, aiutami tu...
-                var (otherPlayerColor, reqType) = Brain.WhatToRequestTo(p.Color, Memory!, _random);
+                if(p == gameState.AmbassadorPawn)
+                {
+                    // scegli il giocatore a cui chiedere, tra quelli disponibili (che non sia black!
+                    Player? [] availablePlayers = gameState.Players.Where(p => p.Color != PlayerColor.Black && p.Color != this.Color).ToArray();
+
+                    pColorToAsk = Brain.WhoToAskInfoBetween(availablePlayers!, _random);
+                }
+
+                var reqType = Brain.WhatToRequestTo(pColorToAsk, Memory!, _random);
 
                 // 3. ask information to the player (crea la request e mandagliela)
-                PlayerInfoRequest request = new (Color, otherPlayerColor, reqType, p.Color == PlayerColor.Black);
+                PlayerInfoRequest request = new (Color, pColorToAsk, reqType, p.Color == PlayerColor.Black);
 
-                Player? otherPlayer = gameState.GetPlayerByColor(otherPlayerColor);
+                Player? otherPlayer = gameState.GetPlayerByColor(pColorToAsk);
 
                 if (otherPlayer == null)
                 {
@@ -128,7 +139,7 @@ namespace Inkognito.Core
                 var answer = otherPlayer.Ask(request);
 
                 // 4. add answer to the memory
-                Brain.ManageAnswer(answer, Memory!);
+                Brain.ManageAnswer(this, answer, Memory!);
 
                 // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
                 if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
@@ -156,7 +167,7 @@ namespace Inkognito.Core
         public PlayerAnswer Ask(PlayerInfoRequest req)
         {
             // Devo dare una risposta... che gli dico? Cervello, aiutami tu...
-            return Brain.ReplyToRequest(this, req, Memory!);
+            return Brain.ReplyToRequest(this, req, Memory!, _random);
         }
 
         /// <summary>

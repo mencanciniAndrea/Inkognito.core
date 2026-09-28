@@ -6,9 +6,17 @@ namespace Inkognito.Core
 {
     public class PlayerAnswer
     {
-        public PlayerInfoRequest Request { get; set; }
+        public PlayerInfoRequest? Request { get; set; }
 
-        private List<InkognitoCard>? _answers;
+        private List<InkognitoCard> _answers;
+
+        private readonly bool[,] Bitmask = new bool[5, 5];
+
+
+        public PlayerAnswer()
+        {
+            _answers = new List<InkognitoCard>();
+        }
         public List<InkognitoCard> Answers 
         {
             get => _answers;
@@ -16,8 +24,8 @@ namespace Inkognito.Core
             {
                 _answers = value;
                 // costruisci la bitmask. Ci serve dopo, per fare il merge diretto
-                int identity = 0;
-                int disguise = 0;
+                int identity;
+                int disguise;
                 foreach(InkognitoCard c in value)
                 {
                     switch(c.Type)
@@ -26,14 +34,14 @@ namespace Inkognito.Core
                             identity = c.Value;
                             for(disguise = 1; disguise < (int) Disguise.DON_T_KNOW; disguise++)
                             {
-                                bitmask[identity, disguise] = true;
+                                Bitmask[identity, disguise] = true;
                             }
                             break;
                         case InkognitoCardType.DISGUISE:
                             disguise = c.Value;
                             for(identity = 1; identity < (int) Identity.DON_T_KNOW; identity++)
                             {
-                                bitmask[identity, disguise] = true;
+                                Bitmask[identity, disguise] = true;
                             }
                             break;
                     }
@@ -41,11 +49,55 @@ namespace Inkognito.Core
             } 
         }
 
-        bool[,] bitmask = new bool[5,5];
-
         public bool[,] AsBitmask()
         {
-            return bitmask;
+            return Bitmask;
+        }
+
+
+        public override string ToString()
+        {
+            StringBuilder sb = new();
+            sb.AppendLine("Cards: ");
+            foreach(var c in _answers)
+            {
+                switch(c.Type)
+                {
+                    case InkognitoCardType.IDENTITY:
+                        sb.AppendLine($"{c.Visibility} {(Identity)c.Value}");
+                        break;
+                    case InkognitoCardType.DISGUISE:
+                        sb.AppendLine($"{c.Visibility} {(Disguise)c.Value}");
+                        break;
+                    case InkognitoCardType.MISSION:
+                        sb.AppendLine($"{c.Visibility} {(MissionPart)c.Value}");
+                        break;
+                }
+            }
+            int columnWidth = 10;
+            sb.AppendLine("Bitmask:");
+            sb.Append("".PadRight(columnWidth));
+            for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+            {
+                sb.Append(((Identity)id).ToString().PadRight(columnWidth));
+            }
+            sb.AppendLine();
+            // Separator
+            sb.AppendLine(new string('-', columnWidth * (5)));
+            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+            {
+                sb.Append(((Disguise)disg).ToString().PadRight(columnWidth));
+
+                for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
+                {
+                    string value = Bitmask[id, disg] ? "True" : "False";
+                    sb.Append(value.PadRight(columnWidth));
+                }
+
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
         }
     }
 }

@@ -18,9 +18,9 @@ namespace Inkognito.Core
         /// <param name="request"></param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory);
+        PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory, Random random);
 
-        void ManageAnswer(PlayerAnswer answer, PlayerMemory memory);
+        void ManageAnswer(Player me, PlayerAnswer answer, PlayerMemory memory);
 
         /// <summary>
         /// Questo passaggio è importante
@@ -33,7 +33,9 @@ namespace Inkognito.Core
         /// <returns></returns>
         IReadOnlyList<Pawn> SortQuerablePawnList(List<Pawn> originalPawnList, PlayerMemory memory);
 
-        (PlayerColor, RequestType) WhatToRequestTo(PlayerColor pColor, PlayerMemory memory, Random random);
+        PlayerColor WhoToAskInfoBetween(Player[] players, Random random);
+
+        RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory memory, Random random);
 
         bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory);
 
