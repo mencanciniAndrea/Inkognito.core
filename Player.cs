@@ -28,8 +28,14 @@ namespace Inkognito.Core
         public IReadOnlyList<Pawn> Pawns { get; }
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
-        public PlayerObjective currentObjective { get; private set; }
+        public PlayerObjective CurrentObjective { get; private set; }
 
+        /// <summary>
+        /// Questa è generale: data un'identità, si sa l'identità del partner. Solo che all'inizio del gioco non si sa quale giocatore è il partner.
+        /// </summary>
+        private Identity MyPartnerIdentity { get; }
+
+        private Player? MyPartner;
         //----------------------------------------------------------------------
         //
         // Intelligence Section
@@ -57,13 +63,33 @@ namespace Inkognito.Core
             Brain = new LazyBrain(loggerFactory); //TODO: non ci deve essere solo un LazyBrain!!!
             _logger = loggerFactory.CreateLogger<Player>();
             _random = r;
-            currentObjective = PlayerObjective.FIND_PARTNER;
+            CurrentObjective = PlayerObjective.FIND_PARTNER;
+            MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
+            MyPartner = null;
         }
 
         public void InitMemory(List<Player> allPlayers)
         {
             List<Player> otherPlayers = allPlayers.Where(p => p != null && p.Color != Color).ToList();
             Memory = new PlayerMemory(otherPlayers, this);
+        }
+
+        private bool PartnerFound()
+        {
+            return MyPartner != null;
+        }
+
+        private bool MissionDiscovered()
+        {
+            //TODO implementare
+            return false;
+        }
+
+        private void UpdateObjective()
+        {
+            // TODO: implementare la macchina a stati finiti di come può evolvere l'assegnazione degli obiettivi.
+            // Nel caso banale è lineare: Find Partner --> Discover Mission --> Complete Mission
+            // ma si potrebbe fare in modo che durante un inganno, ci possano essere degli archi indietro
         }
 
         public void PlayTurn(GameState gameState)

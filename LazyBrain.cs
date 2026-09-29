@@ -576,7 +576,7 @@ namespace Inkognito.Core
                     }
                 }
             }
-            Identity myPartnerId = GetMyPartnerIdentity(me);
+            Identity myPartnerId = RulesEngine.GetMyPartnerIdentity(me);
             if (possibleIdentities.Count == 1)
             {
                 k.AssuredIdentity = possibleIdentities.First();
@@ -629,12 +629,6 @@ namespace Inkognito.Core
             }
         }
 
-        private static Identity GetMyPartnerIdentity(Player me)
-        {
-            return me.Identity == Identity.F ? Identity.B
-                                : me.Identity == Identity.B ? Identity.F
-                                : me.Identity == Identity.X ? Identity.Z
-                                : me.Identity == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
-        }
+        
     }
 }

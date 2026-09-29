@@ -10,6 +10,14 @@ namespace Inkognito.Core
     public class RulesEngine
     {
         private static int[] cellIdsForAmbassadorToReturn = new[] { 9, 49, 44, 24, 26, 29, 55, 2, 6, 47, 39, 34, 10, 13, 37, 54, 33 };
+
+        public static Identity GetMyPartnerIdentity(Player me)
+        {
+            return me.Identity == Identity.F ? Identity.B
+                                : me.Identity == Identity.B ? Identity.F
+                                : me.Identity == Identity.X ? Identity.Z
+                                : me.Identity == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
+        }
         private static IReadOnlyList<Move> GetLegalMovesCurrentPlayerPawn(Pawn pawn, MoveType moveType, Board gameBoard)
         {
             List<Move> legalMoves = new List<Move>();
