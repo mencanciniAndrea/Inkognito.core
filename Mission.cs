@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
@@ -16,7 +17,29 @@ namespace Inkognito.Core
             VictoryConditions = v;
         }
 
-        public static Mission GetMissionForPlayerForAlone(Identity id, GameState g)
+        private static Player? GetPlayerOfId(Identity which, Player p1, Player p2)
+        {
+            Player? result = p1.Identity == which ? p1 : p2.Identity == which? p2 : null;
+            return result;
+        }
+        public static Mission? GetMission(Player p1, Player p2, GameState g)
+        {
+            Player? F = GetPlayerOfId(Identity.F, p1, p2);
+            Player? B = GetPlayerOfId(Identity.B, p1, p2);
+            Player? X = GetPlayerOfId(Identity.X, p1, p2);
+            Player? Z = GetPlayerOfId(Identity.Z, p1, p2);
+
+            if(F != null && B != null)
+            {
+                return GetMissionForFB(F.Mission, B.Mission, g);
+            }
+            else if(X != null && Z != null)
+            {
+                return GetMissionForZX(Z.Mission, X.Mission, g);
+            }
+            return null;
+        }
+        public static Mission GetMissionForPlayerAlone(Identity id, GameState g)
         {
 
             Pawn p = g.GetPawnOf(id) ?? throw new ArgumentNullException($"{id} non può essere null a questo punto!");
@@ -161,6 +184,7 @@ namespace Inkognito.Core
 
             foreach (Player p in g.Players)
             {
+                if (p == null) continue;
                 if(p.Identity == Identity.F || p.Identity == Identity.B)
                 {
                     foreach(Pawn pa in p.Pawns)
@@ -192,6 +216,8 @@ namespace Inkognito.Core
 
             foreach (Player p in g.Players)
             {
+                if (p == null) continue;
+
                 if (p.Identity == Identity.F || p.Identity == Identity.B)
                 {
                     foreach (Pawn pa in p.Pawns)
@@ -210,11 +236,14 @@ namespace Inkognito.Core
 
             foreach (Player p in g.Players)
             {
-                if (p.Identity == Identity.F || p.Identity == Identity.B)
+                if(p != null)
                 {
-                    foreach (Pawn pa in p.Pawns)
+                    if (p.Identity == Identity.F || p.Identity == Identity.B)
                     {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                        foreach (Pawn pa in p.Pawns)
+                        {
+                            vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                        }
                     }
                 }
             }
@@ -283,6 +312,7 @@ namespace Inkognito.Core
 
             foreach (Player p in g.Players)
             {
+                if (p == null) continue;
                 if (p.Identity == Identity.Z || p.Identity == Identity.X)
                 {
                     foreach (Pawn pa in p.Pawns)
@@ -304,8 +334,10 @@ namespace Inkognito.Core
             if (xPawn == null)
                 t = TargetPosition.F_POSITION;
 
+            
             foreach (Player p in g.Players)
             {
+                if (p == null) continue;
                 if (p.Identity == Identity.Z || p.Identity == Identity.X)
                 {
                     foreach (Pawn pa in p.Pawns)
@@ -347,6 +379,7 @@ namespace Inkognito.Core
 
             foreach (Player p in g.Players)
             {
+                if (p == null) continue;
                 if (p.Identity == Identity.Z || p.Identity == Identity.X)
                 {
                     foreach (Pawn pa in p.Pawns)

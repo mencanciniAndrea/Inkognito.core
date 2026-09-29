@@ -20,7 +20,7 @@ namespace Inkognito.Core
         /// <returns></returns>
         PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory, Random random);
 
-        void ManageAnswer(Player me, PlayerAnswer answer, PlayerMemory memory);
+        void ManageAnswer(Player me, PlayerAnswer answer, GameState gameState);
 
         /// <summary>
         /// Questo passaggio è importante
@@ -37,7 +37,7 @@ namespace Inkognito.Core
 
         RequestType WhatToRequestTo(PlayerColor pColor, PlayerMemory memory, Random random);
 
-        bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory);
+        bool ShouldDeclareMissionCompleted(Player me, GameState gameState);
 
         void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase);
 

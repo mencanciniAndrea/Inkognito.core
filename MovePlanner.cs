@@ -8,12 +8,8 @@ namespace Inkognito.Core
 {
     public class MovePlanner
     {
-        private readonly ILogger<MovePlanner> _logger;
-
-        public MovePlanner(ILoggerFactory factory)
+        public MovePlanner( )
         {
-            
-            _logger = factory.CreateLogger<MovePlanner>();
         }
 
 
@@ -207,7 +203,7 @@ namespace Inkognito.Core
                 }
                 else
                 {
-                    _logger.LogDebug($"DEBUG: Plan not legal: {plan}");
+                    Console.Out.WriteLine($"DEBUG: Plan not legal: {plan}");
                 }
             }
 

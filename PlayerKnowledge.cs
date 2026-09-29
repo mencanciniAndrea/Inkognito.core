@@ -274,7 +274,7 @@ namespace Inkognito.Core
 
                 for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
                 {
-                    string value = WhatIKnowAboutHim[id, disg] ? "True" : "False";
+                    string value = WhatIKnowAboutHim[id, disg] ? "1" : "-";
                     sb.Append(value.PadRight(columnWidth));
                 }
 
@@ -298,7 +298,7 @@ namespace Inkognito.Core
 
                 for (int id = 1; id < (int)(Identity.DON_T_KNOW); id++)
                 {
-                    string value = WhatHeKnowsAboutMe[id, disg] ? "True" : "False";
+                    string value = WhatHeKnowsAboutMe[id, disg] ? "1" : "-";
                     sb.Append(value.PadRight(columnWidth));
                 }
 

@@ -1,10 +1,9 @@
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Inkognito.Core
 {
@@ -25,6 +24,10 @@ namespace Inkognito.Core
 
         public Pawn AmbassadorPawn { get; } = null!;
 
+        public bool GameOver { get; private set; }
+
+        public int ActivePlayers { get; private set; }
+
         public GameState(params string?[] playerNames)
             : this(playerNames, GenerateSeed())
         {
@@ -38,13 +41,6 @@ namespace Inkognito.Core
 
         public GameState(string?[] playerNames, Random random)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder
-                    .AddConsole()
-                    .SetMinimumLevel(LogLevel.Debug);
-            });
-
             // Controlli di validità dei parametri
             if (playerNames is null)
                 throw new ArgumentNullException(nameof(playerNames));
@@ -90,7 +86,7 @@ namespace Inkognito.Core
             List<Pawn> pawns = new List<Pawn> { };
 
             var players = new Player?[playerNames.Length];
-            CreatePlayers(playerNames, random, loggerFactory, identities, disguises, missions, colors, pawns, players);
+            CreatePlayers(playerNames, random, identities, disguises, missions, colors, pawns, players);
 
             if (GetPlayerByColor(PlayerColor.Black) == null)
             {
@@ -113,8 +109,9 @@ namespace Inkognito.Core
 
         }
 
-        private void CreatePlayers(string?[] playerNames, Random random, ILoggerFactory loggerFactory, List<Identity> identities, List<Disguise> disguises, List<MissionPart> missions, PlayerColor[] colors, List<Pawn> pawns, Player?[] players)
+        private void CreatePlayers(string?[] playerNames, Random random, List<Identity> identities, List<Disguise> disguises, List<MissionPart> missions, PlayerColor[] colors, List<Pawn> pawns, Player?[] players)
         {
+            ActivePlayers = 0;
             for (int i = 0; i < playerNames.Length; i++)
             {
                 var playerName = playerNames[i];
@@ -122,16 +119,19 @@ namespace Inkognito.Core
                 {
                     continue;
                 }
+
+                // Conta i player attivi
+                ActivePlayers++;
                 players[i] = colors[i] == PlayerColor.Black
-                    ? CreateAmbassadorPlayer(playerName!, loggerFactory, random)
+                    ? CreateAmbassadorPlayer(playerName!, random)
                     : new Player(playerName!, colors[i],
                         Draw(identities, random), Draw(disguises, random), Draw(missions, random),
-                        CreatePawns(colors[i], random), loggerFactory, random);
+                        CreatePawns(colors[i], random), random);
                 pawns.AddRange(players[i]!.Pawns);
             }
-            foreach(Player p in players)
+            foreach(Player? p in players)
             {
-                if (p != null) p.InitMemory(new(players!));
+                p?.InitMemory(new(players!));
             }
         }
 
@@ -150,10 +150,10 @@ namespace Inkognito.Core
             return null;
         }
 
-        private Player CreateAmbassadorPlayer(string name, ILoggerFactory loggerFactory, Random random)
+        private Player CreateAmbassadorPlayer(string name, Random random)
         {
             AmbassadorPlayer = new Player(name, PlayerColor.Black, Identity.A, Disguise.Ambassador, MissionPart.FindAllIdentities,
-                        new[] { AmbassadorPawn }, loggerFactory, random);
+                        new[] { AmbassadorPawn }, random);
             return AmbassadorPlayer;
         }
 
@@ -183,7 +183,7 @@ namespace Inkognito.Core
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
             writer.WriteLine($"Seed: {Seed?.ToString() ?? "non disponibile (Random esterno)"}");
-            writer.WriteLine($"Turno {TurnNumber} - Giocatore corrente: {CurrentPlayer}");
+            writer.WriteLine($"Turno {TurnNumber} - Giocatore corrente: {CurrentPlayer.Name}");
             
             /*
             foreach (var player in Players)
@@ -247,7 +247,28 @@ namespace Inkognito.Core
             return !Players.Any(player => player?.Pawns.Any(pawn => pawn.Position == cell) ?? false);
         }
 
-        
+        public void DeclareMissionComplete(Player whoDeclares, Player declaredPartner)
+        {
+            //TODO Implementare. Per adesso, che siamo in fase embrionale, la gestiamo banale
+            if(declaredPartner == null)
+            {
+                Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
+            }
+            else
+            {
+                Console.Out.WriteLine($"{whoDeclares.Name} dichiara Missione Compiuta con {declaredPartner.Name}");
+            }
+
+            foreach(Player p in Players)
+            {
+                if (p == null) continue;
+                StringBuilder sb = new();
+                sb.Append($"{p.Name}, {p.Color}, {p.Identity}, {p.Disguise}, {p.Mission} - ");
+                sb.AppendJoin(", ", p.Pawns);
+                Console.Out.WriteLine(sb);
+            }
+            GameOver = true;
+        }
 
         private static int GenerateSeed()
         {

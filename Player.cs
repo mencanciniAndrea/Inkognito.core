@@ -15,8 +15,6 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
-        private readonly ILogger<Player> _logger;
-
         private readonly Random _random;
 
         public string Name { get; }
@@ -35,7 +33,9 @@ namespace Inkognito.Core
         /// </summary>
         private Identity MyPartnerIdentity { get; }
 
-        private Player? MyPartner;
+        public Mission? MissionToComplete { get; set; }
+
+        public Player? MyPartner { get; set; }
         //----------------------------------------------------------------------
         //
         // Intelligence Section
@@ -52,7 +52,7 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
-        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, ILoggerFactory loggerFactory, Random r)
+        internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, Random r)
         {
             Name = name;
             Color = color;
@@ -60,8 +60,7 @@ namespace Inkognito.Core
             Disguise = disguise;
             Mission = mission;
             Pawns = Array.AsReadOnly(pawns);
-            Brain = new LazyBrain(loggerFactory); //TODO: non ci deve essere solo un LazyBrain!!!
-            _logger = loggerFactory.CreateLogger<Player>();
+            Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
             _random = r;
             CurrentObjective = PlayerObjective.FIND_PARTNER;
             MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
@@ -105,15 +104,18 @@ namespace Inkognito.Core
 
             StringBuilder sb = new();
             sb.Append("Mosse disponibili: {");
-            sb.AppendJoin(",",AvailableMoves);
+            sb.AppendJoin(", ",AvailableMoves);
             sb.Append("}");
-            _logger.LogDebug(sb.ToString());
+            Console.Out.WriteLine($"{sb}");
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
             Plan movementsPlan = Brain.GetBestMovePlan(gameState, AvailableMoves, TurnPhase.Move);
 
-            _logger.LogDebug($"Applico le mosse del piano {movementsPlan}");
+            sb = new();
+            sb.Append($"{Name} segue: ");
+            sb.AppendJoin(", ", movementsPlan.Moves);
+            Console.Out.WriteLine($"{sb}");
             foreach (var move in movementsPlan.Moves)
             {
                 gameState.Board.ApplyMove(move);
@@ -155,47 +157,77 @@ namespace Inkognito.Core
                 // 3. ask information to the player (crea la request e mandagliela)
                 PlayerInfoRequest request = new (Color, pColorToAsk, reqType, p.Color == PlayerColor.Black);
 
-
                 Player? otherPlayer = gameState.GetPlayerByColor(pColorToAsk) ?? throw new ArgumentNullException($"Impossibile decidere il giocatore a cui chiedere le informazioni!!! Seed partita: {gameState.Seed}");
-
-                if(reqType == RequestType.DISGUISE && otherPlayer.Name == "Marco" && Name == "Giulia")
-                {
-                    Console.Out.WriteLine("Ferma qui");
-                }
 
                 var answer = otherPlayer.Ask(request);
 
                 String come = request.ThroughAmbassador ? "tramite ambasciatore " : "direttamente";
 
-                _logger.LogDebug($"Chiedo {reqType} a {otherPlayer.Name} ({otherPlayer.Identity}, {otherPlayer.Disguise}) {come}: {answer}");
+                Console.Out.WriteLine($"{Name} ({Identity},{Disguise}) chiede {reqType} a {otherPlayer.Name} ({otherPlayer.Identity}, {otherPlayer.Disguise}) {come}: {answer}");
 
-                _logger.LogDebug($"{Name} sapeva di {otherPlayer.Name}: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
+                Console.Out.WriteLine($"{Name} sapeva di {otherPlayer.Name}: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
+
+
                 // 4. add answer to the memory
-                Brain.ManageAnswer(this, answer, Memory!);
+                Brain.ManageAnswer(this, answer, gameState);
 
-                _logger.LogDebug($"ora sa: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
+                Console.Out.WriteLine($"ora sa: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
+                Console.Out.WriteLine($"{Name} deve giocare da solo, secondo lui: {Memory.IMustPlayAlone}");
+
+                foreach(var c in answer.Answers)
+                {
+                    if(c.Type == InkognitoCardType.MISSION)
+                    {
+                        Console.Out.WriteLine($"{otherPlayer.Name} ha notificato la sua missione {(MissionPart) c.Value} a {Name}");
+                        // TODO Se ti fidi...
+                        MissionToComplete = Inkognito.Core.Mission.GetMission(this, otherPlayer, gameState);
+                        if(MissionToComplete != null)
+                        {
+                            Console.Out.WriteLine($"{Name} e {otherPlayer.Name} hanno come missione comune: {MissionToComplete.Description}");
+                        }
+                    }
+                }
 
                 // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
-                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState))
+                {
+                    Console.Out.WriteLine($"{Name} dichiara Missione Compiuta con partner: {MyPartner}");
+                    DeclareMissionCompleted(gameState);
+                    break;
+                }
 
                 // 5. move the pawn somewhere else and apply move into the general gamestate
                 Plan dismissionPlan = Brain.DismissPawn(p, gameState, this, Memory!);
+                sb.Clear();
+                sb.Append($"{Name} manda via {p}: ");
+                sb.AppendJoin(", ", dismissionPlan.Moves);
 
-                _logger.LogDebug($"Applico le mosse del piano {dismissionPlan}");
+                Console.Out.WriteLine($"{sb.ToString()}");
                 foreach (var move in dismissionPlan.Moves)
                 {
                     gameState.Board.ApplyMove(move);
                 }
 
                 // valuta se dichiarare missione compiuta
-                if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState))
+                {
+                    DeclareMissionCompleted(gameState);
+                    break;
+                }
             }
 
-            // Fase 6: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi mandare l'ambasciatore o un player da qualche parte)
-            if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
+            if (!gameState.GameOver)
+            {
+                if (!RulesEngine.IsGameBoardStateLegal(gameState.Board, this, TurnPhase.Expulsion))
+                {
+                    throw new ArgumentException($"Errore! stato del gioco non legale! {gameState.Board}");
+                }
+                // Fase 6: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi mandare l'ambasciatore o un player da qualche parte)
+                if (Brain.ShouldDeclareMissionCompleted(this, gameState)) DeclareMissionCompleted(gameState);
 
-            // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
-            EndTurn();
+                // fase 5: si termina il turno, dichiarando "endTurn" e lasciando il controllo al GameState
+                EndTurn();
+            }
         }
 
         public PlayerAnswer Ask(PlayerInfoRequest req)
@@ -207,8 +239,17 @@ namespace Inkognito.Core
         /// <summary>
         /// Da usare quando decidi di dichiarare missione compiuta
         /// </summary>
-        public void DeclareMissionCompleted()
+        public void DeclareMissionCompleted(GameState g)
         {
+            if (this.Memory!.IMustPlayAlone == YES_OR_NO.YES)
+            {
+                g.DeclareMissionComplete(this, null);
+            }
+            if(MyPartner == null)
+            {
+                return;
+            }
+            else g.DeclareMissionComplete(this, MyPartner);
             //TODO: per completare la missione devi essere nel tuo turno corrente.
             //TODO: la procedura è: 1. dichiara la vittoria dicendo "Missione Compiuta!" 2. scegli il giocatore a cui vuoi stringere la mano (dovrebbe essere il tuo alleato)
             //TODO: se il giocatore scelto rifiuta (sì, perché può rifiutare, se non è il tuo alleato) allora vince la squadra avversaria alla tua

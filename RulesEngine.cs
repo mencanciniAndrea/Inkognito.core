@@ -233,6 +233,10 @@ namespace Inkognito.Core
                 var pawnsOnCell = gameBoard.GetPawnsOnCell(pawn.Position);
                 if (pawnsOnCell.Count > 1)
                 {
+                    StringBuilder sb = new();
+                    sb.Append("Pawns violating: ");
+                    sb.AppendJoin(", ", pawnsOnCell);
+                    Console.Out.WriteLine(sb);
                     return false;
                 }
             }

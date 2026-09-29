@@ -14,9 +14,10 @@ namespace Inkognito.Core
     public class LazyBrain : IBrain
     {
         public MovePlanner Planner { get; set; } = null!;
-        public LazyBrain(ILoggerFactory factory)
+
+        public LazyBrain()
         {
-            Planner = new MovePlanner(factory);
+            Planner = new MovePlanner();
         }
 
         public Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
@@ -27,7 +28,7 @@ namespace Inkognito.Core
             Console.Out.WriteLine($"Numero di piani possibili: {possiblePlans.Count}");
 
             var plausiblePlans = new List<Plan>();
-            int i = 1;
+            int dummyPlans = 0;
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
@@ -49,6 +50,7 @@ namespace Inkognito.Core
                         {
                             Console.Out.WriteLine($"Piano dummy. Casella già visitata: {move.To.Id}");
                             dummyPlan = true;
+                            dummyPlans++;
                         }
                         else
                         {
@@ -65,7 +67,12 @@ namespace Inkognito.Core
                 {
                     Console.Out.WriteLine($"Piano non legale: {plan}");
                 }
-                i++;
+            }
+
+            if(plausiblePlans.Count == 0)
+            {
+                Console.Out.WriteLine($"Nessun piano legale non dummy trovato!");
+                Console.Out.WriteLine($"Devi scegliere tra {dummyPlans} piani dummy o non fare niente");
             }
 
             // super-lazy... scegli il primo che non sia vuoto, se c'è.
@@ -158,7 +165,7 @@ namespace Inkognito.Core
             Pawn ambassador = plan.resultingBoard.AmbassadorPawn;
             if(gameState.CurrentPlayer.Identity == Identity.A)
             {
-                EvaluateForAmbassador(plan, gameState.CurrentPlayer, phase);
+                EvaluatePlanForAmbassador(plan, gameState.CurrentPlayer, phase);
             }
             else
             {
@@ -213,7 +220,7 @@ namespace Inkognito.Core
             }
         }
 
-        private static void EvaluateForAmbassador(Plan plan, Player me, TurnPhase phase)
+        private static void EvaluatePlanForAmbassador(Plan plan, Player me, TurnPhase phase)
         {
             var pawnsOnCell = plan.resultingBoard.GetPawnsOnCell(plan.resultingBoard.AmbassadorPawn.Position);
             if (pawnsOnCell.Count > 1)
@@ -272,10 +279,10 @@ namespace Inkognito.Core
                 result = AnswerDirectRequest(me, request, random, pk);
             }
             
-
-            // Il task di seguito verrà, per adesso lasciamolo da fare
-            // TODO: se conosco l'identità e so che è mio compagno, aggiungo la missione
-
+            if(pk.IsMyPartner == YES_OR_NO.YES)
+            {
+                result.Answers.Add(new (InkognitoCardVisibility.SECRET, InkognitoCardType.MISSION, (int)me.Mission));
+            }
 
             result.Request = request;
             pk.AddAnswerGiven(result);
@@ -426,10 +433,15 @@ namespace Inkognito.Core
         /// <param name="gameState"></param>
         /// <param name="memory"></param>
         /// <returns></returns>
-        public bool ShouldDeclareMissionCompleted(Player me, GameState gameState, PlayerMemory memory)
+        public bool ShouldDeclareMissionCompleted(Player me, GameState gameState)
         {
-            //TODO implementare
-            return false;
+            Mission? m = me.MissionToComplete;
+            bool result = false;
+            if (m != null)
+            {
+                if (m.VerifyVictoryConditions(gameState)) result = true;
+            }
+            return result;
         }
 
         /// <summary>
@@ -496,8 +508,9 @@ namespace Inkognito.Core
             return legalPlans[0];
         }
 
-        public void ManageAnswer(Player me, PlayerAnswer answer, PlayerMemory memory)
+        public void ManageAnswer(Player me, PlayerAnswer answer, GameState gameState)
         {
+            PlayerMemory memory = me.Memory!;
             var receiverColor = answer.Request!.Receiver;
             PlayerKnowledge? k = memory.GetPlayerKnowledge(receiverColor);
             k!.AddAnswerReceived(answer);
@@ -553,7 +566,7 @@ namespace Inkognito.Core
                         case InkognitoCardType.MISSION:
                             // Qui non c'è da fare ragionamenti. Mi ha fatto vedere la missione. Va bene così, sia che è mio compagno che non (nell'ultimo caso mi sta ingannando).
                             k.AssignedMission = (MissionPart)a.Value;
-
+                            
                             break;
                         default:
                             throw new ArgumentException($"Card Type {a.Type} not valid at this point!");
@@ -583,6 +596,10 @@ namespace Inkognito.Core
 
                 k.IsMyPartner = k.AssuredIdentity == myPartnerId ? YES_OR_NO.YES : YES_OR_NO.NO;
 
+                if(k.IsMyPartner == YES_OR_NO.YES)
+                {
+                    me.MyPartner = gameState.GetPlayerByColor(k.About);
+                }
                 // aggiorna tutte le altre knowledge.
                 // però... ora che ho aggiornato questa knowledge, in teoria, si verifica un effetto a cascata
                 // che mi consente di continuare a fare inferenza sulle altre knowledges... 
@@ -627,8 +644,59 @@ namespace Inkognito.Core
                     }
                 }
             }
+
+            if(gameState.ActivePlayers == 3)
+            {
+                SetEventuallyPlayAlone(me);
+                if(me.Memory!.IMustPlayAlone == YES_OR_NO.YES)
+                {
+                    // Se devi giocare da solo, aggiorna subito la missione e scappa!
+                    me.MissionToComplete = Mission.GetMissionForPlayerAlone(me.Identity, gameState);
+                    Console.Out.WriteLine($"{me.Name} deve: {me.MissionToComplete.Description}");
+                }
+            }
         }
 
+        /// <summary>
+        /// Da utilizzare se ci sono 3 giocatori. Stabilisce, in base a quello che il player sa, se deve giocare da solo o no
+        /// </summary>
+        /// <param name="me"></param>
+        /// <param name="memory"></param>
+        private void SetEventuallyPlayAlone(Player me)
+        {
+            PlayerMemory? memory = me.Memory;
+            if (memory == null) return;
+
+            List<PlayerKnowledge> otherPlayersKnowledge = new();
+            for (int c = 1; c <= (int)PlayerColor.Yellow; c++)
+            {
+                PlayerColor currentColor = (PlayerColor)c;
+                if (currentColor == me.Color) continue;
+
+                PlayerKnowledge? k = memory.GetPlayerKnowledge(currentColor);
+                if (k == null) continue;
+                otherPlayersKnowledge.Add(k);
+            }
+
+            if(otherPlayersKnowledge.Count == 2)
+            {
+                var p0IsMyPartner = otherPlayersKnowledge[0].IsMyPartner;
+                var p1IsMyPartner = otherPlayersKnowledge[1].IsMyPartner;
+                if (p0IsMyPartner == YES_OR_NO.NO && p1IsMyPartner == YES_OR_NO.NO)
+                {
+                    memory.IMustPlayAlone = YES_OR_NO.YES;
+                    
+                }
+                else if(p0IsMyPartner == YES_OR_NO.YES || p1IsMyPartner == YES_OR_NO.YES)
+                {
+                    memory.IMustPlayAlone = YES_OR_NO.NO;
+                }
+                else
+                {
+                    memory.IMustPlayAlone = YES_OR_NO.DONT_KNOW;
+                }
+            }
+        }
         
     }
 }

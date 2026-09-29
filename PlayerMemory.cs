@@ -10,6 +10,8 @@ namespace Inkognito.Core
     {
         IReadOnlyList<PlayerKnowledge> KnowledgeAboutOtherPlayers { get; }
 
+        public YES_OR_NO IMustPlayAlone { get; set; }
+
         public PlayerMemory(IEnumerable<Player> otherPlayers, Player me)
         {
             var _knowledgeAboutOtherPlayers = new List<PlayerKnowledge>();
@@ -19,6 +21,7 @@ namespace Inkognito.Core
             }
 
             KnowledgeAboutOtherPlayers = _knowledgeAboutOtherPlayers;
+            IMustPlayAlone = YES_OR_NO.DONT_KNOW;
         }
 
         public (Identity, Disguise, MissionPart) GetKnownPlayerDetails(PlayerColor pColor)
