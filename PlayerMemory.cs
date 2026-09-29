@@ -33,13 +33,13 @@ namespace Inkognito.Core
             return (Identity.DON_T_KNOW, Disguise.DON_T_KNOW, MissionPart.DON_T_KNOW);
         }
 
-        public PlayerKnowledge GetPlayerKnowledge(PlayerColor c)
+        public PlayerKnowledge? GetPlayerKnowledge(PlayerColor c)
         {
             foreach(var k in KnowledgeAboutOtherPlayers)
             {
                 if (k.About == c) return k;
             }
-            throw new ArgumentException($"Colore {c} non trovato!");
+            return null;
         }
 
         public override string ToString()

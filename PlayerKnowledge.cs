@@ -45,6 +45,7 @@ namespace Inkognito.Core
             AnswersGiven = new List<PlayerAnswer>();
             AnswersToIdentityToGive = new List<PlayerAnswer>();
             AnswersToDisguiseToGive = new List<PlayerAnswer>();
+            IsMyPartner = YES_OR_NO.DONT_KNOW;
             if (me.Identity == Identity.A)
             {
                 IsMyPartner = YES_OR_NO.NO;
@@ -191,31 +192,52 @@ namespace Inkognito.Core
             {
                 foreach (Disguise currDisguise in otherDisguises)
                 {
-                    PlayerAnswer currAns = new();
-                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise));
-                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)currDisguise));
-                    currAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)currId));
+                    PlayerAnswer currAns = new()
+                    {
+                        Answers = new()
+                        {
+                            new (InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise),
+                            new (InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)currDisguise),
+                            new (InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)currId)
+                        }
+                    };
+
                     AnswersToDisguiseToGive.Add(currAns);
                 }
             }
 
             // le ultime 3, con i travestimenti falsi
-            PlayerAnswer cAns = new();
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            PlayerAnswer cAns = new()
+            {
+                Answers = new()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity)
+                }
+            };
             AnswersToDisguiseToGive.Add(cAns);
 
-            cAns = new();
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            cAns = new()
+            {
+                Answers = new()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[1]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity)
+                }
+            };
             AnswersToDisguiseToGive.Add(cAns);
 
-            cAns = new();
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]));
-            cAns.Answers.Add(new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity));
+            cAns = new()
+            {
+                Answers = new()
+                {
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[0]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisguises[2]),
+                    new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity)
+                }
+            };
             AnswersToDisguiseToGive.Add(cAns);
         }
 

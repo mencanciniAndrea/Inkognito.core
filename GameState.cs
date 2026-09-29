@@ -183,7 +183,9 @@ namespace Inkognito.Core
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
             writer.WriteLine($"Seed: {Seed?.ToString() ?? "non disponibile (Random esterno)"}");
-            writer.WriteLine($"Turno {TurnNumber} - Giocatore corrente: {CurrentPlayer.Name} ({CurrentPlayer.Color})");
+            writer.WriteLine($"Turno {TurnNumber} - Giocatore corrente: {CurrentPlayer}");
+            
+            /*
             foreach (var player in Players)
             {
                 if (player is null)
@@ -191,6 +193,7 @@ namespace Inkognito.Core
                 writer.WriteLine($"{player}");
                 
             }
+            */
         }
 
         public void SetPlayerType(int playerIndex, PlayerType type)

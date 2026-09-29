@@ -62,7 +62,7 @@ namespace Inkognito.Core
 
         public void InitMemory(List<Player> allPlayers)
         {
-            List<Player> otherPlayers = allPlayers.Where(p => p.Color != Color).ToList();
+            List<Player> otherPlayers = allPlayers.Where(p => p != null && p.Color != Color).ToList();
             Memory = new PlayerMemory(otherPlayers, this);
         }
 
@@ -119,7 +119,7 @@ namespace Inkognito.Core
                 if(p == gameState.AmbassadorPawn)
                 {
                     // scegli il giocatore a cui chiedere, tra quelli disponibili (che non sia black!
-                    Player? [] availablePlayers = gameState.Players.Where(p => p.Color != PlayerColor.Black && p.Color != this.Color).ToArray();
+                    Player? [] availablePlayers = gameState.Players.Where(p => p != null && p.Color != PlayerColor.Black && p.Color != this.Color).ToArray();
 
                     pColorToAsk = Brain.WhoToAskInfoBetween(availablePlayers!, _random);
                 }
@@ -129,17 +129,25 @@ namespace Inkognito.Core
                 // 3. ask information to the player (crea la request e mandagliela)
                 PlayerInfoRequest request = new (Color, pColorToAsk, reqType, p.Color == PlayerColor.Black);
 
-                Player? otherPlayer = gameState.GetPlayerByColor(pColorToAsk);
 
-                if (otherPlayer == null)
+                Player? otherPlayer = gameState.GetPlayerByColor(pColorToAsk) ?? throw new ArgumentNullException($"Impossibile decidere il giocatore a cui chiedere le informazioni!!! Seed partita: {gameState.Seed}");
+
+                if(reqType == RequestType.DISGUISE && otherPlayer.Name == "Marco" && Name == "Giulia")
                 {
-                    throw new ArgumentNullException($"Impossibile decidere il giocatore a cui chiedere le informazioni!!! Seed partita: {gameState.Seed}");
+                    Console.Out.WriteLine("Ferma qui");
                 }
 
                 var answer = otherPlayer.Ask(request);
 
+                String come = request.ThroughAmbassador ? "tramite ambasciatore " : "direttamente";
+
+                _logger.LogDebug($"Chiedo {reqType} a {otherPlayer.Name} ({otherPlayer.Identity}, {otherPlayer.Disguise}) {come}: {answer}");
+
+                _logger.LogDebug($"{Name} sapeva di {otherPlayer.Name}: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
                 // 4. add answer to the memory
                 Brain.ManageAnswer(this, answer, Memory!);
+
+                _logger.LogDebug($"ora sa: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
 
                 // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
                 if (Brain.ShouldDeclareMissionCompleted(this, gameState, Memory!)) DeclareMissionCompleted();
@@ -191,6 +199,7 @@ namespace Inkognito.Core
         {
             StringBuilder sb = new();
             sb.AppendLine($"{Name}: {Type}, {Color}, {Identity}, {Disguise}, {Mission}");
+            
             sb.AppendJoin(",", Pawns);
             sb.AppendLine();
             sb.AppendLine("Memory: ");
@@ -199,6 +208,7 @@ namespace Inkognito.Core
                 sb.AppendLine($"{Memory}");
                 
             }
+            
             return sb.ToString();
         }
 

@@ -58,22 +58,23 @@ namespace Inkognito.Core
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.AppendLine("Cards: ");
+            sb.Append("Cards: ");
             foreach(var c in _answers)
             {
                 switch(c.Type)
                 {
                     case InkognitoCardType.IDENTITY:
-                        sb.AppendLine($"{c.Visibility} {(Identity)c.Value}");
+                        sb.Append($"{c.Visibility} {(Identity)c.Value} ");
                         break;
                     case InkognitoCardType.DISGUISE:
-                        sb.AppendLine($"{c.Visibility} {(Disguise)c.Value}");
+                        sb.Append($"{c.Visibility} {(Disguise)c.Value} ");
                         break;
                     case InkognitoCardType.MISSION:
-                        sb.AppendLine($"{c.Visibility} {(MissionPart)c.Value}");
+                        sb.Append($"{c.Visibility} {(MissionPart)c.Value} ");
                         break;
                 }
             }
+            sb.AppendLine();
             int columnWidth = 10;
             sb.AppendLine("Bitmask:");
             sb.Append("".PadRight(columnWidth));

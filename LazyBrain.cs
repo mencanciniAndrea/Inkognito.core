@@ -190,15 +190,18 @@ namespace Inkognito.Core
                                     {
                                         var otherPlayerColor = x.Color;
                                         var k = me.Memory!.GetPlayerKnowledge(otherPlayerColor);
-                                        if (k.AssuredIdentity == Identity.DON_T_KNOW)
+                                        if(k != null) // potrei fare riferimento ad un giocatore assente
                                         {
-                                            plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
-                                        }
-                                        else
-                                        {
-                                            if (k.IsMyPartner == YES_OR_NO.YES)
+                                            if (k.AssuredIdentity == Identity.DON_T_KNOW)
                                             {
-                                                plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                                                plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
+                                            }
+                                            else
+                                            {
+                                                if (k.IsMyPartner == YES_OR_NO.YES)
+                                                {
+                                                    plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                                                }
                                             }
                                         }
                                     }
@@ -221,15 +224,18 @@ namespace Inkognito.Core
                     {
                         var otherPlayerColor = x.Color;
                         var k = me.Memory!.GetPlayerKnowledge(otherPlayerColor);
-                        if (k.AssuredIdentity == Identity.DON_T_KNOW)
+                        if(k != null)
                         {
-                            plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
-                        }
-                        else
-                        {
-                            if (k.IsMyPartner == YES_OR_NO.YES)
+                            if (k.AssuredIdentity == Identity.DON_T_KNOW)
                             {
-                                plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                                plan.Traits.Add(PlanTraits.MEET_UNKNOWN_PLAYER);
+                            }
+                            else
+                            {
+                                if (k.IsMyPartner == YES_OR_NO.YES)
+                                {
+                                    plan.Traits.Add(PlanTraits.MEET_PARTNER);
+                                }
                             }
                         }
                     }
@@ -248,7 +254,12 @@ namespace Inkognito.Core
         public PlayerAnswer ReplyToRequest(Player me, PlayerInfoRequest request, PlayerMemory memory, Random random)
         {
             // recupera la memoria che hai di quel giocatore
-            PlayerKnowledge pk = memory.GetPlayerKnowledge(request.Sender);
+            PlayerKnowledge? pk = memory.GetPlayerKnowledge(request.Sender);
+
+            if (pk == null)
+            {
+                throw new ArgumentNullException($"Giocatore {request.Sender} non può essere null qui!");
+            }
 
             PlayerAnswer result;
 
@@ -352,28 +363,41 @@ namespace Inkognito.Core
             //prendi la lista delle risposte disponibili
             List<PlayerAnswer> availableAnswers = request.Type == RequestType.IDENTITY ? pk.AnswersToIdentityToGive : pk.AnswersToDisguiseToGive;
 
-            //Scegli a caso tra quelle disponibili
-            int index = random.Next(availableAnswers.Count);
-
-            if (index == 0)
+            
+            if(availableAnswers.Count == 0)
             {
+                // le hai già date tutte...
                 List<InkognitoCard> answers = new()
                 {
                     new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity),
                     new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise)
                 };
-                
+
                 if (request.Type == RequestType.IDENTITY)
                 {
-                    int nextId = (int)me.Identity;
-                    nextId = nextId == (int)Identity.DON_T_KNOW ? 1 : nextId;
-                    answers.Add(new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, nextId));
+                    // scegli a caso tra le identità restanti
+                    List<Identity> otherIds = new();
+                    for(int i = 1; i < (int)Identity.DON_T_KNOW; i++)
+                    {
+                        if(i != (int) me.Identity)
+                        {
+                            otherIds.Add((Identity)i);
+                        }
+                    }
+
+                    answers.Add(new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)otherIds[random.Next(otherIds.Count)]));
                 }
                 else
                 {
-                    int nextDisg = (int)me.Disguise;
-                    nextDisg = nextDisg == (int)Disguise.DON_T_KNOW ? 1 : nextDisg;
-                    answers.Add(new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, nextDisg));
+                    List<Disguise> otherDisg = new();
+                    for(int d = 1; d < (int)Disguise.DON_T_KNOW; d++)
+                    {
+                        if(d != (int)me.Disguise)
+                        {
+                            otherDisg.Add((Disguise)d);
+                        }
+                    }
+                    answers.Add(new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)otherDisg[random.Next(otherDisg.Count)]));
                 }
 
                 PlayerAnswer def = new()
@@ -383,9 +407,11 @@ namespace Inkognito.Core
                 };
                 result = def;
             }
+
             else
             {
-                result = availableAnswers[index - 1];
+                int index = random.Next(availableAnswers.Count);
+                result = availableAnswers[index];
                 availableAnswers.Remove(result);
             }
 
@@ -473,8 +499,8 @@ namespace Inkognito.Core
         public void ManageAnswer(Player me, PlayerAnswer answer, PlayerMemory memory)
         {
             var receiverColor = answer.Request!.Receiver;
-            PlayerKnowledge k = memory.GetPlayerKnowledge(receiverColor);
-            k.AddAnswerReceived(answer);
+            PlayerKnowledge? k = memory.GetPlayerKnowledge(receiverColor);
+            k!.AddAnswerReceived(answer);
 
             // questa è la bitmask creata dalle risposte
             var answerBitmask = answer.AsBitmask();
@@ -550,47 +576,37 @@ namespace Inkognito.Core
                     }
                 }
             }
+            Identity myPartnerId = GetMyPartnerIdentity(me);
             if (possibleIdentities.Count == 1)
             {
                 k.AssuredIdentity = possibleIdentities.First();
 
-                if(me.Identity == Identity.X || me.Identity == Identity.Z)
-                {
-                    if(k.AssuredIdentity == Identity.X || k.AssuredIdentity == Identity.Z)
-                    {
-                        k.IsMyPartner = YES_OR_NO.YES;
-                    }
-                    else
-                    {
-                        k.IsMyPartner = YES_OR_NO.NO;
-                    }
-                }
-                else if(me.Identity == Identity.F || me.Identity == Identity.B)
-                {
-                    if(k.AssuredIdentity == Identity.F || k.AssuredIdentity == Identity.B)
-                    {
-                        k.IsMyPartner = YES_OR_NO.YES;
-                    }
-                    else
-                    {
-                        k.IsMyPartner = YES_OR_NO.NO;
-                    }
-                }
-                else
-                {
-                    k.IsMyPartner = YES_OR_NO.NO;
-                }
+                k.IsMyPartner = k.AssuredIdentity == myPartnerId ? YES_OR_NO.YES : YES_OR_NO.NO;
 
-                for(int c = 1; c < 5; c++)
+                // aggiorna tutte le altre knowledge.
+                // però... ora che ho aggiornato questa knowledge, in teoria, si verifica un effetto a cascata
+                // che mi consente di continuare a fare inferenza sulle altre knowledges... 
+                for (int c = 1; c < 5; c++)
                 {
-                    if(c != (int) me.Color && c != (int) k.About)
+                    if (c != (int)me.Color && c != (int)k.About)
                     {
-                        var ok = memory.GetPlayerKnowledge((PlayerColor) c);
-                        for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+                        var ok = memory.GetPlayerKnowledge((PlayerColor)c);
+                        if (ok != null)
                         {
-                            ok.WhatIKnowAboutHim[(int)k.AssuredIdentity, disg] = false;
+                            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+                            {
+                                ok.WhatIKnowAboutHim[(int)k.AssuredIdentity, disg] = false;
+                            }
                         }
                     }
+                }
+            }
+            // piuttosto sveglio per un lazy brain...
+            if (possibleIdentities.Count == 2)
+            {
+                if (!possibleIdentities.Contains(myPartnerId))
+                {
+                    k.IsMyPartner = YES_OR_NO.NO;
                 }
             }
             if (possibleDisguises.Count == 1)
@@ -601,13 +617,24 @@ namespace Inkognito.Core
                     if (c != (int)me.Color && c != (int)k.About)
                     {
                         var ok = memory.GetPlayerKnowledge((PlayerColor)c);
-                        for (int id = 1; id < (int)Identity.DON_T_KNOW; id++)
+                        if(ok != null)
                         {
-                            ok.WhatIKnowAboutHim[id, (int) k.AssuredDisguise] = false;
+                            for (int id = 1; id < (int)Identity.DON_T_KNOW; id++)
+                            {
+                                ok.WhatIKnowAboutHim[id, (int)k.AssuredDisguise] = false;
+                            }
                         }
                     }
                 }
             }
+        }
+
+        private static Identity GetMyPartnerIdentity(Player me)
+        {
+            return me.Identity == Identity.F ? Identity.B
+                                : me.Identity == Identity.B ? Identity.F
+                                : me.Identity == Identity.X ? Identity.Z
+                                : me.Identity == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
         }
     }
 }
