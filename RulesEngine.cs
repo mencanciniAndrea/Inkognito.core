@@ -11,6 +11,15 @@ namespace Inkognito.Core
     {
         private static int[] cellIdsForAmbassadorToReturn = new[] { 9, 49, 44, 24, 26, 29, 55, 2, 6, 47, 39, 34, 10, 13, 37, 54, 33 };
 
+        public static Identity GetPartnerOf(Identity id)
+        {
+            if (id == Identity.A) return Identity.DON_T_KNOW;
+            return id == Identity.F ? Identity.B
+                                : id == Identity.B ? Identity.F
+                                : id == Identity.X ? Identity.Z
+                                : id == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
+        }
+
         public static Identity GetMyPartnerIdentity(Player me)
         {
             return me.Identity == Identity.F ? Identity.B

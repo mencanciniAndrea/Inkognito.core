@@ -247,17 +247,121 @@ namespace Inkognito.Core
             return !Players.Any(player => player?.Pawns.Any(pawn => pawn.Position == cell) ?? false);
         }
 
-        public void DeclareMissionComplete(Player whoDeclares, Player declaredPartner)
+        private Player? GetPlayerById(Identity id)
         {
-            //TODO Implementare. Per adesso, che siamo in fase embrionale, la gestiamo banale
-            if(declaredPartner == null)
+            foreach(Player? p in Players)
             {
-                Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
+                if (p != null && p.Identity == id) return p;
+            }
+            return null;
+        }
+
+        private List<Player> GetEnemies(Identity id)
+        {
+            List<Player> result = new();
+            HashSet<Identity> X_Z = new() { Identity.X, Identity.Z };
+            HashSet<Identity> F_B = new() { Identity.F, Identity.B };
+
+            if (X_Z.Contains(id))
+            {
+                foreach (Player? p in Players)
+                {
+                    if (p != null && F_B.Contains(p.Identity))
+                    {
+                        result.Add(p);
+                    }
+                }
+            }
+            if(F_B.Contains(id))
+            {
+                foreach(Player? p in Players)
+                {
+                    if(p != null && X_Z.Contains(p.Identity))
+                    {
+                        result.Add(p);
+                    }
+                }
+            }
+            return result;
+        }
+
+        public void DeclareAmbassadorMissionCompleted()
+        {
+            //TODO implementare
+            // questa la può chiamare solo l'ambasciatore
+            GameOver = true;
+        }
+
+        public void DeclareLonelyMissionCompleted(Player whoDeclares)
+        {
+            Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
+
+            if(whoDeclares.Identity == Identity.A)
+            {
+                throw new ArgumentException("L'ambasciatore non deve usare questo metodo per dichiarare missione compiuta, ma DeclareAmbassadorMissionCompleted()!");
+            }
+            // Verifica!
+            // 1. who declares, chi è?
+            // se è l'ambasciatore fai un'altra verifica
+            Identity lonely = whoDeclares.Identity;
+            Identity partner = RulesEngine.GetPartnerOf(lonely);
+            Player? realPartner = GetPlayerById(partner);
+            // sei solo, quindi il tuo vero partner deve essere null.
+            if (realPartner != null)
+            {
+                StringBuilder sb = new();
+                sb.Append("Mission Failed!");
+                sb.AppendJoin(" and ", GetEnemies(lonely));
+                sb.Append(" win!");
+                Console.Out.WriteLine(sb);
             }
             else
             {
-                Console.Out.WriteLine($"{whoDeclares.Name} dichiara Missione Compiuta con {declaredPartner.Name}");
+                Mission m = Mission.GetMissionForPlayerAlone(lonely, this);
+                if (m.VerifyVictoryConditions(this))
+                {
+                    Console.Out.WriteLine($"Mission Completed! {whoDeclares.Name} wins, fleeing successfully!");
+                }
+                else
+                {
+                    StringBuilder sb = new();
+                    sb.Append("Mission Failed!");
+                    sb.AppendJoin(" and ", GetEnemies(lonely));
+                    sb.Append(" win!");
+                    Console.Out.WriteLine(sb);
+                }
             }
+            GameOver = true;
+        }
+
+        public void DeclareMissionComplete(Player whoDeclares, Player declaredPartner)
+        {
+            if(whoDeclares == null && declaredPartner == null)
+            {
+                throw new ArgumentNullException("Non puoi dichiarare una missione compiuta con un partner null!");
+            }
+            Console.Out.WriteLine($"{whoDeclares!.Name} dichiara Missione Compiuta con {declaredPartner!.Name}");
+            Player? realPartner = GetPlayerById(RulesEngine.GetPartnerOf(whoDeclares.Identity));
+
+            Mission realMission = Mission.GetMission(whoDeclares, declaredPartner, this);
+            if (realMission.VerifyVictoryConditions(this))
+            {
+                StringBuilder sb = new();
+                sb.Append("Mission Completed!");
+                sb.AppendJoin(" and ", new[]{ whoDeclares.Name,declaredPartner.Name});
+                sb.Append(" win!");
+                Console.Out.WriteLine(sb);
+            }
+            else
+            {
+                StringBuilder sb = new();
+                sb.Append("Mission Completed!");
+                sb.AppendJoin(" and ", GetEnemies(whoDeclares.Identity));
+                sb.Append(" win!");
+                Console.Out.WriteLine(sb);
+            }
+
+
 
             foreach(Player p in Players)
             {

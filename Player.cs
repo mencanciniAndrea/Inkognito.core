@@ -243,7 +243,7 @@ namespace Inkognito.Core
         {
             if (this.Memory!.IMustPlayAlone == YES_OR_NO.YES)
             {
-                g.DeclareMissionComplete(this, null);
+                g.DeclareLonelyMissionCompleted(this);
             }
             if(MyPartner == null)
             {

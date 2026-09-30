@@ -22,8 +22,12 @@ namespace Inkognito.Core
             Player? result = p1.Identity == which ? p1 : p2.Identity == which? p2 : null;
             return result;
         }
-        public static Mission? GetMission(Player p1, Player p2, GameState g)
+        public static Mission GetMission(Player p1, Player p2, GameState g)
         {
+            if(p1 == null && p2 == null)
+            {
+                throw new ArgumentNullException("p1 e p2 non possono essere null!");
+            }
             Player? F = GetPlayerOfId(Identity.F, p1, p2);
             Player? B = GetPlayerOfId(Identity.B, p1, p2);
             Player? X = GetPlayerOfId(Identity.X, p1, p2);
@@ -37,7 +41,15 @@ namespace Inkognito.Core
             {
                 return GetMissionForZX(Z.Mission, X.Mission, g);
             }
-            return null;
+            if(p1 == null && p2 != null)
+            {
+                return GetMissionForPlayerAlone(p2.Identity, g);
+            }
+            else if(p1 != null && p2 == null)
+            {
+                return GetMissionForPlayerAlone(p1.Identity, g);
+            }
+            throw new ArgumentException("Qualcosa è andato storto. Non posso dichiarare una mssione");
         }
         public static Mission GetMissionForPlayerAlone(Identity id, GameState g)
         {
