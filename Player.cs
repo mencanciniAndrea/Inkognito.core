@@ -65,6 +65,11 @@ namespace Inkognito.Core
             CurrentObjective = PlayerObjective.FIND_PARTNER;
             MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
             MyPartner = null;
+
+            if(identity == Identity.A)
+            {
+                MissionToComplete = Inkognito.Core.Mission.GetAmbassadorMission();
+            }
         }
 
         public void InitMemory(List<Player> allPlayers)
@@ -121,6 +126,16 @@ namespace Inkognito.Core
                 gameState.Board.ApplyMove(move);
             }
 
+            // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
+            if (Brain.ShouldDeclareMissionCompleted(this, gameState))
+            {
+                Console.Out.WriteLine($"{Name} dichiara Missione Compiuta con partner: {MyPartner}");
+                DeclareMissionCompleted(gameState);
+                if(Identity != Identity.A)
+                {
+                    return;
+                }
+            }
             // fase 3: eseguite le mosse, si ottiene una lista di altri PEDONI (non player!) a cui chiedere le informazioni.
             // l'esecuzione delle mosse infatti è finalizzata ad ottenere questa lista oppure a spostare i propri pedoni.
 
@@ -161,6 +176,14 @@ namespace Inkognito.Core
 
                 var answer = otherPlayer.Ask(request);
 
+                // regola del ruleset 2022: se l'ambasciatore è un giocatore giocante, deve vedere le carte della richiesta fatta attraverso di lui
+                if(gameState.AmbassadorPlayer != null && request.ThroughAmbassador)
+                {
+                    Console.Out.WriteLine($"{Name} ha chiesto a {otherPlayer.Name} tramite l'ambasciatore {gameState.AmbassadorPlayer.Name} - faccio sapere la risposta all'ambasciatore");
+                    gameState.AmbassadorPlayer.Brain.ManageAnswer(gameState.AmbassadorPlayer, answer, gameState);
+                    Console.Out.WriteLine($"{gameState.AmbassadorPlayer.Name} ora sa: {gameState.AmbassadorPlayer.Memory!.GetPlayerKnowledge(pColorToAsk)}");
+                }
+
                 String come = request.ThroughAmbassador ? "tramite ambasciatore " : "direttamente";
 
                 Console.Out.WriteLine($"{Name} ({Identity},{Disguise}) chiede {reqType} a {otherPlayer.Name} ({otherPlayer.Identity}, {otherPlayer.Disguise}) {come}: {answer}");
@@ -171,7 +194,7 @@ namespace Inkognito.Core
                 // 4. add answer to the memory
                 Brain.ManageAnswer(this, answer, gameState);
 
-                Console.Out.WriteLine($"ora sa: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
+                Console.Out.WriteLine($"{Name} ora sa: {Memory!.GetPlayerKnowledge(pColorToAsk)}");
                 Console.Out.WriteLine($"{Name} deve giocare da solo, secondo lui: {Memory.IMustPlayAlone}");
 
                 foreach(var c in answer.Answers)
@@ -193,7 +216,10 @@ namespace Inkognito.Core
                 {
                     Console.Out.WriteLine($"{Name} dichiara Missione Compiuta con partner: {MyPartner}");
                     DeclareMissionCompleted(gameState);
-                    break;
+                    if (Identity != Identity.A)
+                    {
+                        break;
+                    }
                 }
 
                 // 5. move the pawn somewhere else and apply move into the general gamestate
@@ -202,7 +228,7 @@ namespace Inkognito.Core
                 sb.Append($"{Name} manda via {p}: ");
                 sb.AppendJoin(", ", dismissionPlan.Moves);
 
-                Console.Out.WriteLine($"{sb.ToString()}");
+                Console.Out.WriteLine(sb);
                 foreach (var move in dismissionPlan.Moves)
                 {
                     gameState.Board.ApplyMove(move);
@@ -212,7 +238,10 @@ namespace Inkognito.Core
                 if (Brain.ShouldDeclareMissionCompleted(this, gameState))
                 {
                     DeclareMissionCompleted(gameState);
-                    break;
+                    if (Identity != Identity.A)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -241,6 +270,15 @@ namespace Inkognito.Core
         /// </summary>
         public void DeclareMissionCompleted(GameState g)
         {
+            if(this.Identity == Identity.A)
+            {
+                var (rId, rDisg, _) = Memory!.GetKnownPlayerDetails(PlayerColor.Red);
+                var (gId, gDisg, _) = Memory!.GetKnownPlayerDetails(PlayerColor.Green);
+                var (bId, bDisg, _) = Memory!.GetKnownPlayerDetails(PlayerColor.Blue);
+                var (yId, yDisg, _) = Memory!.GetKnownPlayerDetails(PlayerColor.Yellow);
+                g.DepositReport(new(rId, rDisg, gId, gDisg, bId, bDisg, yId, yDisg));
+                return;
+            }
             if (this.Memory!.IMustPlayAlone == YES_OR_NO.YES)
             {
                 g.DeclareLonelyMissionCompleted(this);

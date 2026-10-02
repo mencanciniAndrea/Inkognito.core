@@ -290,77 +290,101 @@ namespace Inkognito.Core
             return result;
         }
 
+        /// <summary>
+        /// Risponde ad una richiesta di informazioni fatta tramite ambasciatore. In questo caso le carte fornite devono essere 2, di cui una vera.
+        /// Inoltre, la coppia di carte non può essere ripetuta, nemmeno se faceva parte di un set da 3.
+        /// 
+        /// Nota tecnica: in pratica basta generare le possibili risposte. Ad ogni risposta generata (ne sono 3 per identità e 3 per travestimento)
+        /// basta confrontare la coppia con le risposte già date, che vengono dalla PlayerKnowledge. Quindi, anche se la richiesta è fatta
+        /// tramite ambasciatore ma per un giocatore colorato, si confrontano solo le coppie già fornite, anche come set di 3 carte.
+        /// </summary>
+        /// <param name="me"></param>
+        /// <param name="request"></param>
+        /// <param name="random"></param>
+        /// <param name="pk"></param>
+        /// <returns></returns>
         private static PlayerAnswer AnswerRequestFromAmbassador(Player me, PlayerInfoRequest request, Random random, PlayerKnowledge pk)
         {
             PlayerAnswer result;
 
-            // Qui bisogna controllare le richieste fatte e togliere dalle risposte disponibili quelle che sono state già usate...
-
             // Tutte le risposte disponibili:
-            List<PlayerAnswer> risposteDisponibili = new();
+            List<PlayerAnswer> risposteDisponibili = GetPossibleAnswers(request.Type, me, pk, random);
 
-            if (request.Type == RequestType.IDENTITY)
-            {
-                List<Identity> otherIdentities = new();
-                for (int i = 1; i < (int)Identity.DON_T_KNOW; i++)
-                {
-                    if(i != (int)me.Identity)
-                    {
-                        List<InkognitoCard> answers = new()
-                        {
-                            new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity),
-                            new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, i)
-                        };
-                        PlayerAnswer one = new()
-                        {
-                            Request = request,
-                            Answers = answers
-                        };
-                        
-                        risposteDisponibili.Add(one);
-                    }
-                }
-            }
-            else
-            {
-                List<Disguise> otherDisguises = new();
-                for(int d = 1; d < (int) Disguise.DON_T_KNOW; d++)
-                {
-                    if(d != (int)me.Disguise)
-                    {
-                        List<InkognitoCard> answers = new()
-                        {
-                            new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise),
-                            new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, d)
-                        };
-                        PlayerAnswer two = new()
-                        {
-                            Request = request,
-                            Answers = answers
-                        };
-                        
-                        risposteDisponibili.Add(two);
-                    }
-                }
-            }
-
-            //TODO controllare se nelle risposte fornite c'è già quella corrente
-            /*
-            foreach(PlayerAnswer currentAnswer in risposteDisponibili)
-            {
-                bool alreadyGiven = false;
-                foreach (PlayerAnswer givenAnswer in pk.AnswersGiven)
-                {
-                    
-                }
-            }*/
-
+            // Scegli una risposta a caso tra quelle disponibili. Ce ne sta almeno una.
             result = risposteDisponibili[random.Next(risposteDisponibili.Count())];
+            
+            // setta la request, altrimenti non ti ricorderai di averla data
+            result.Request = request;
 
             pk.AddAnswerGiven(result);
             
-
             return result;
+        }
+
+        private static List<PlayerAnswer> GetPossibleAnswers(RequestType type, Player me, PlayerKnowledge pk, Random random)
+        {
+            List<PlayerAnswer> risposteDisponibili = new();
+
+            int traitValue = type == RequestType.IDENTITY ? (int)me.Identity : (int)me.Disguise;
+            InkognitoCardType cType = type == RequestType.IDENTITY ? InkognitoCardType.IDENTITY : InkognitoCardType.DISGUISE;
+
+            List<Identity> otherIdentities = new();
+            for (int i = 1; i < 5; i++)
+            {
+                if (i != traitValue)
+                {
+                    List<InkognitoCard> cards = new()
+                    {
+                        new(InkognitoCardVisibility.PUBLIC, cType, traitValue),
+                        new(InkognitoCardVisibility.PUBLIC, cType, i)
+                    };
+                    PlayerAnswer answer = new()
+                    {
+                        Answers = cards
+                    };
+                    bool alreadyGiven = false;
+                    
+                    // Qui dobbiamo ciclare solo sulle risposte date al giusto tipo di richiesta
+                    // perché quelle dell'altro tipo contengono solo una carta del tipo richiesto
+                    foreach (PlayerAnswer used in pk.AnswersGiven.Where(a => a.Request!.Type == type).ToList())
+                    {
+                        //prendi le carte identità della risposta corrente e confrontale con quelle della risposta già data
+                        var currentCardsOfCorrectType = answer.Answers.Where(a => a.Type == cType).Select(a => a.Value).ToList();
+                        alreadyGiven = used.Answers.Where(a => a.Type == cType).Select(a => a.Value).ToList().All(id => currentCardsOfCorrectType.Contains(id));
+                        if (alreadyGiven) break;
+                    }
+                    if (!alreadyGiven)
+                    {
+                        risposteDisponibili.Add(answer);
+                    }
+                }
+            }
+
+            Console.Out.WriteLine($"Risposte disponibili da dare a {pk.About} per {type} : {risposteDisponibili.Count}");
+            if (risposteDisponibili.Count == 0)
+            {
+                // le hai già date tutte. Ne componi una a caso, tanto se ti obbligano a dire quale è quella vera, in teoria la saprebbero già... sono loro che sono tonti
+                List<int> otherValues = new();
+                for(int i = 1; i < 5; i++)
+                {
+                    if (i != traitValue)
+                    {
+                        otherValues.Add(i);
+                    }
+                }
+                List<InkognitoCard> cards = new()
+                {
+                    new(InkognitoCardVisibility.PUBLIC, cType, traitValue),
+                    new(InkognitoCardVisibility.PUBLIC, cType, otherValues[random.Next(otherValues.Count)])
+                };
+                PlayerAnswer answer = new()
+                {
+                    Answers = cards
+                };
+                risposteDisponibili.Add(answer);
+                Console.Out.WriteLine($"Do una risposta a caso a {pk.About} per {type} : {answer}");
+            }
+            return risposteDisponibili;
         }
 
         private static PlayerAnswer AnswerDirectRequest(Player me, PlayerInfoRequest request, Random random, PlayerKnowledge pk)
@@ -370,7 +394,6 @@ namespace Inkognito.Core
             //prendi la lista delle risposte disponibili
             List<PlayerAnswer> availableAnswers = request.Type == RequestType.IDENTITY ? pk.AnswersToIdentityToGive : pk.AnswersToDisguiseToGive;
 
-            
             if(availableAnswers.Count == 0)
             {
                 // le hai già date tutte...
@@ -435,6 +458,18 @@ namespace Inkognito.Core
         /// <returns></returns>
         public bool ShouldDeclareMissionCompleted(Player me, GameState gameState)
         {
+            
+
+            if(me.Identity == Identity.A)
+            {
+                if(gameState.AmbassadorReport != null)
+                {
+                    // l'ambasciatore ha già depositato il report. Non c'è bisogno di dichiarare missione compiuta
+                    return false;
+                }
+                return ShouldAmbassadorDepositReport(me);
+            }
+            
             Mission? m = me.MissionToComplete;
             bool result = false;
             if (m != null)
@@ -442,6 +477,17 @@ namespace Inkognito.Core
                 if (m.VerifyVictoryConditions(gameState)) result = true;
             }
             return result;
+        }
+
+        private static bool ShouldAmbassadorDepositReport(Player me)
+        {
+            for (int i = 1; i <= (int)PlayerColor.Yellow; i++)
+            {
+                var (id, disg, _) = me.Memory!.GetKnownPlayerDetails((PlayerColor)i);
+                if (id == Identity.DON_T_KNOW || disg == Disguise.DON_T_KNOW) return false;
+            }
+            // So tutto di tutti!
+            return true;
         }
 
         /// <summary>
@@ -508,9 +554,16 @@ namespace Inkognito.Core
             return legalPlans[0];
         }
 
-        public void ManageAnswer(Player me, PlayerAnswer answer, GameState gameState)
+        /// <summary>
+        /// Si gestisce la risposta, sia per un giocatore normale che per l'ambasciatore
+        /// </summary>
+        /// <param name="brainOwner">il proprietario del Brain. Si aggiorna la memoria di questo player</param>
+        /// <param name="answer">La risposta ricevuta</param>
+        /// <param name="gameState">il gamestate corrente. Serve per recuperare gli altri giocatori in base al colore</param>
+        /// <exception cref="ArgumentException"></exception>
+        public void ManageAnswer(Player brainOwner, PlayerAnswer answer, GameState gameState)
         {
-            PlayerMemory memory = me.Memory!;
+            PlayerMemory memory = brainOwner.Memory!;
             var receiverColor = answer.Request!.Receiver;
             PlayerKnowledge? k = memory.GetPlayerKnowledge(receiverColor);
             k!.AddAnswerReceived(answer);
@@ -589,23 +642,27 @@ namespace Inkognito.Core
                     }
                 }
             }
-            Identity myPartnerId = RulesEngine.GetMyPartnerIdentity(me);
+
+
+            Identity myPartnerId = RulesEngine.GetMyPartnerIdentity(brainOwner);
             if (possibleIdentities.Count == 1)
             {
                 k.AssuredIdentity = possibleIdentities.First();
-
-                k.IsMyPartner = k.AssuredIdentity == myPartnerId ? YES_OR_NO.YES : YES_OR_NO.NO;
-
-                if(k.IsMyPartner == YES_OR_NO.YES)
+                if (brainOwner.Identity != Identity.A)
                 {
-                    me.MyPartner = gameState.GetPlayerByColor(k.About);
+                    k.IsMyPartner = k.AssuredIdentity == myPartnerId ? YES_OR_NO.YES : YES_OR_NO.NO;
+
+                    if (k.IsMyPartner == YES_OR_NO.YES)
+                    {
+                        brainOwner.MyPartner = gameState.GetPlayerByColor(k.About);
+                    }
                 }
                 // aggiorna tutte le altre knowledge.
                 // però... ora che ho aggiornato questa knowledge, in teoria, si verifica un effetto a cascata
                 // che mi consente di continuare a fare inferenza sulle altre knowledges... 
                 for (int c = 1; c < 5; c++)
                 {
-                    if (c != (int)me.Color && c != (int)k.About)
+                    if (c != (int)brainOwner.Color && c != (int)k.About)
                     {
                         var ok = memory.GetPlayerKnowledge((PlayerColor)c);
                         if (ok != null)
@@ -618,20 +675,24 @@ namespace Inkognito.Core
                     }
                 }
             }
-            // piuttosto sveglio per un lazy brain...
-            if (possibleIdentities.Count == 2)
+            if(brainOwner.Identity != Identity.A)
             {
-                if (!possibleIdentities.Contains(myPartnerId))
+                // piuttosto sveglio per un lazy brain...
+                if (possibleIdentities.Count == 2)
                 {
-                    k.IsMyPartner = YES_OR_NO.NO;
+                    if (!possibleIdentities.Contains(myPartnerId))
+                    {
+                        k.IsMyPartner = YES_OR_NO.NO;
+                    }
                 }
             }
+            
             if (possibleDisguises.Count == 1)
             {
                 k.AssuredDisguise = possibleDisguises.First();
                 for (int c = 1; c < 5; c++)
                 {
-                    if (c != (int)me.Color && c != (int)k.About)
+                    if (c != (int)brainOwner.Color && c != (int)k.About)
                     {
                         var ok = memory.GetPlayerKnowledge((PlayerColor)c);
                         if(ok != null)
@@ -647,12 +708,12 @@ namespace Inkognito.Core
 
             if(gameState.ActivePlayers == 3)
             {
-                SetEventuallyPlayAlone(me);
-                if(me.Memory!.IMustPlayAlone == YES_OR_NO.YES)
+                SetEventuallyPlayAlone(brainOwner);
+                if(brainOwner.Memory!.IMustPlayAlone == YES_OR_NO.YES)
                 {
                     // Se devi giocare da solo, aggiorna subito la missione e scappa!
-                    me.MissionToComplete = Mission.GetMissionForPlayerAlone(me.Identity, gameState);
-                    Console.Out.WriteLine($"{me.Name} deve: {me.MissionToComplete.Description}");
+                    brainOwner.MissionToComplete = Mission.GetMissionForPlayerAlone(brainOwner.Identity, gameState);
+                    Console.Out.WriteLine($"{brainOwner.Name} deve: {brainOwner.MissionToComplete.Description}");
                 }
             }
         }
