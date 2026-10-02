@@ -17,21 +17,67 @@ namespace Inkognito.Core
             VictoryConditions = v;
         }
 
+        public static Mission GetAmbassadorMission()
+        {
+            Mission ambassadorMission = new("Scoprire l'identità di tutti i giocatori", new());
+            return ambassadorMission;
+        }
+
+        public static bool AmbassadorMissionIsCompleted(GameState g) 
+        {
+            if(g.AmbassadorReport == null)
+            {
+                return false;
+            }
+            Player red = g.GetPlayerByColor(PlayerColor.Red) ?? throw new ArgumentNullException("Il giocatore rosso non può essere null a questo punto!");
+            Player green = g.GetPlayerByColor(PlayerColor.Green) ?? throw new ArgumentNullException("Il giocatore verde non può essere null a questo punto!");
+            Player blue = g.GetPlayerByColor(PlayerColor.Blue) ?? throw new ArgumentNullException("Il giocatore blu non può essere null a questo punto!");
+            Player yellow = g.GetPlayerByColor(PlayerColor.Yellow) ?? throw new ArgumentNullException("Il giocatore giallo non può essere null a questo punto!");
+
+
+            if (g.AmbassadorReport.RedPlayerIdentity != red.Identity || g.AmbassadorReport.RedPlayerDisguise != red.Disguise)
+            {
+                return false;
+            }
+            if (g.AmbassadorReport.GreenPlayerIdentity != green.Identity || g.AmbassadorReport.GreenPlayerDisguise != green.Disguise)
+            {
+                return false;
+            }
+            if (g.AmbassadorReport.BluePlayerIdentity != blue.Identity || g.AmbassadorReport.BluePlayerDisguise != blue.Disguise)
+            {
+                return false;
+            }
+            if (g.AmbassadorReport.YellowPlayerIdentity != yellow.Identity || g.AmbassadorReport.YellowPlayerDisguise != yellow.Disguise)
+            {
+                return false;
+            }
+            return true;
+        }
+
         private static Player? GetPlayerOfId(Identity which, Player p1, Player p2)
         {
             Player? result = p1.Identity == which ? p1 : p2.Identity == which? p2 : null;
             return result;
         }
-        public static Mission GetMission(Player p1, Player p2, GameState g)
+        public static Mission GetMission(Player? p1, Player? p2, GameState g)
         {
             if(p1 == null && p2 == null)
             {
                 throw new ArgumentNullException("p1 e p2 non possono essere null!");
             }
-            Player? F = GetPlayerOfId(Identity.F, p1, p2);
-            Player? B = GetPlayerOfId(Identity.B, p1, p2);
-            Player? X = GetPlayerOfId(Identity.X, p1, p2);
-            Player? Z = GetPlayerOfId(Identity.Z, p1, p2);
+            if (p1 == null && p2 != null)
+            {
+                return GetMissionForPlayerAlone(p2.Identity, g);
+            }
+            else if (p1 != null && p2 == null)
+            {
+                return GetMissionForPlayerAlone(p1.Identity, g);
+            }
+
+            Player? F = GetPlayerOfId(Identity.F, p1!, p2!);
+            Player? B = GetPlayerOfId(Identity.B, p1!, p2!);
+            Player? X = GetPlayerOfId(Identity.X, p1!, p2!);
+            Player? Z = GetPlayerOfId(Identity.Z, p1!, p2!);
 
             if(F != null && B != null)
             {
@@ -41,14 +87,8 @@ namespace Inkognito.Core
             {
                 return GetMissionForZX(Z.Mission, X.Mission, g);
             }
-            if(p1 == null && p2 != null)
-            {
-                return GetMissionForPlayerAlone(p2.Identity, g);
-            }
-            else if(p1 != null && p2 == null)
-            {
-                return GetMissionForPlayerAlone(p1.Identity, g);
-            }
+            
+            
             throw new ArgumentException("Qualcosa è andato storto. Non posso dichiarare una mssione");
         }
         public static Mission GetMissionForPlayerAlone(Identity id, GameState g)
@@ -281,9 +321,21 @@ namespace Inkognito.Core
 
         private static List<VictoryCondition> F_C_B_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new ();
             Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(A, TargetPosition.EMBASSY));
+            if(g.AmbassadorPlayer == null)
+            {
+                vc.Add(new VictoryCondition(A, TargetPosition.EMBASSY));
+            }
+            else
+            {
+                Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
+                Pawn? B = g.GetPawnOf(Identity.B) ?? throw new ArgumentNullException("Il Pawn di B non può essere null a questo punto!");
+
+                vc.Add(new VictoryCondition(F, TargetPosition.EMBASSY));
+                vc.Add(new VictoryCondition(B, TargetPosition.EMBASSY));
+            }
+            
             return vc;
         }
 

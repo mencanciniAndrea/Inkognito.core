@@ -1,3 +1,5 @@
+using Inkognito.Core.Commands;
+using Inkognito.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +11,8 @@ namespace Inkognito.Core
 {
     public sealed class GameState
     {
+        public event Action<IGameEvent>? EventOccurred;
+
         public readonly ProphecyPhantom prophecyPhantom;
         public Board Board { get; }
         public int TurnNumber { get; private set; } = 1;
@@ -27,6 +31,8 @@ namespace Inkognito.Core
         public bool GameOver { get; private set; }
 
         public int ActivePlayers { get; private set; }
+
+        public AmbassadorReport? AmbassadorReport { get; private set; }
 
         public GameState(params string?[] playerNames)
             : this(playerNames, GenerateSeed())
@@ -109,6 +115,16 @@ namespace Inkognito.Core
 
         }
 
+        
+        public void DepositReport(AmbassadorReport report)
+        {
+            if (report is null)
+                throw new ArgumentNullException(nameof(report));
+            if (AmbassadorReport is not null)
+                throw new InvalidOperationException("Il report dell'ambasciatore è già stato depositato.");
+            AmbassadorReport = report;
+            Console.Out.WriteLine($"{AmbassadorPlayer!.Name} dice: \"So chi siete.\"");
+        }
         private void CreatePlayers(string?[] playerNames, Random random, List<Identity> identities, List<Disguise> disguises, List<MissionPart> missions, PlayerColor[] colors, List<Pawn> pawns, Player?[] players)
         {
             ActivePlayers = 0;
@@ -285,20 +301,13 @@ namespace Inkognito.Core
             return result;
         }
 
-        public void DeclareAmbassadorMissionCompleted()
-        {
-            //TODO implementare
-            // questa la può chiamare solo l'ambasciatore
-            GameOver = true;
-        }
-
         public void DeclareLonelyMissionCompleted(Player whoDeclares)
         {
             Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
 
             if(whoDeclares.Identity == Identity.A)
             {
-                throw new ArgumentException("L'ambasciatore non deve usare questo metodo per dichiarare missione compiuta, ma DeclareAmbassadorMissionCompleted()!");
+                throw new ArgumentException("L'ambasciatore non deve usare questo metodo per dichiarare missione compiuta, ma DepositAmbassadorReport()!");
             }
             // Verifica!
             // 1. who declares, chi è?
@@ -340,10 +349,25 @@ namespace Inkognito.Core
             {
                 throw new ArgumentNullException("Non puoi dichiarare una missione compiuta con un partner null!");
             }
+
+            if(whoDeclares!.Identity == Identity.A || declaredPartner.Identity == Identity.A)
+            {
+                throw new ArgumentException("L'ambasciatore non deve usare questo metodo per dichiarare missione compiuta, ma DepositAmbassadorReport()!");
+            }
+
+            if(Mission.AmbassadorMissionIsCompleted(this))
+            {
+                StringBuilder sb = new();
+                sb.Append($"L'Ambasciatore vi ha smascherati!{AmbassadorPlayer!.Name} vince!");
+                Console.Out.WriteLine(sb);
+                GameOver = true;
+                return;
+            }
+
             Console.Out.WriteLine($"{whoDeclares!.Name} dichiara Missione Compiuta con {declaredPartner!.Name}");
             Player? realPartner = GetPlayerById(RulesEngine.GetPartnerOf(whoDeclares.Identity));
 
-            Mission realMission = Mission.GetMission(whoDeclares, declaredPartner, this);
+            Mission realMission = Mission.GetMission(whoDeclares, realPartner, this);
             if (realMission.VerifyVictoryConditions(this))
             {
                 StringBuilder sb = new();
@@ -363,7 +387,7 @@ namespace Inkognito.Core
 
 
 
-            foreach(Player p in Players)
+            foreach(Player? p in Players)
             {
                 if (p == null) continue;
                 StringBuilder sb = new();
@@ -390,6 +414,38 @@ namespace Inkognito.Core
             return value;
         }
 
+        public IReadOnlyList<IGameEvent> SubmitCommand(IGameCommand command)
+        {
+            IReadOnlyList<IGameEvent> events = command switch
+            {
+                StartGameCommand => HandleGameStart(),
+
+                _ => throw new InvalidOperationException(
+                    $"Unknown command: {command.GetType().Name}")
+            };
+
+            foreach (var gameEvent in events)
+            {
+                EventOccurred?.Invoke(gameEvent);
+            }
+
+            return events;
+        }
+
+        private IReadOnlyList<IGameEvent> HandleGameStart()
+        {
+            // Qui, per ora, niente di particolare.
+            // Il comando ha semplicemente avviato la partita.
+
+            return new List<IGameEvent>
+            { 
+                new GameStartedEvent()
+            };
+        }
+
     }
+
+
+    
 }
 

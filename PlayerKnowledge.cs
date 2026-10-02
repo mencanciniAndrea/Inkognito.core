@@ -55,6 +55,7 @@ namespace Inkognito.Core
             {
                 IsMyPartner = YES_OR_NO.NO;
                 AssignedMission = MissionPart.FindAllIdentities;
+                InitGivableAnswersToAmbassador(me);
             }
             else
             {
@@ -103,6 +104,47 @@ namespace Inkognito.Core
                 {
                     WhatHeKnowsAboutMe[identity, disguise] = true;
                 }
+            }
+        }
+
+        private void InitGivableAnswersToAmbassador(Player me)
+        {
+            List<Identity> otherIdentities = new();
+            for (int id = 1; id < (int)Identity.DON_T_KNOW; id++)
+            {
+                if (id != (int)me.Identity)
+                    otherIdentities.Add((Identity)id);
+            }
+            foreach(Identity id in otherIdentities)
+            {
+                AnswersToIdentityToGive.Add(new()
+                {
+                    Answers = new()
+                    {
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)id),
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity),
+                    }
+                });
+            }
+
+            List<Disguise> otherDisguises = new();
+            for (int disg = 1; disg < (int)Disguise.DON_T_KNOW; disg++)
+            {
+                if (disg != (int)me.Disguise)
+                {
+                    otherDisguises.Add((Disguise)disg);
+                }
+            }
+            foreach(Disguise d in otherDisguises)
+            {
+                AnswersToDisguiseToGive.Add(new()
+                {
+                    Answers = new()
+                    {
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)d),
+                        new InkognitoCard(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise),
+                    }
+                });
             }
         }
 
