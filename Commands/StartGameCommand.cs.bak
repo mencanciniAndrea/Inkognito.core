@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
+<<<<<<< HEAD
+namespace Inkognito.Core.Commands
+=======
 namespace Inkognito.Core
+>>>>>>> daa1879a5a925d11d9080f3ded082dfa85b92e74
 {
     public record StartGameCommand : IGameCommand
     {
