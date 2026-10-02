@@ -6,12 +6,19 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 
 namespace Inkognito.Core
 {
     public sealed class GameState
     {
-        public event Action<IGameEvent>? EventOccurred;
+
+        private readonly Channel<IGameCommand> _commands;
+        private readonly Channel<IGameEvent> _events;
+
+        private Task? _gameTask;
+
 
         public readonly ProphecyPhantom prophecyPhantom;
         public Board Board { get; }
@@ -153,11 +160,13 @@ namespace Inkognito.Core
 
         public Pawn? GetPawnOf(Identity id)
         {
-            foreach(Player p in Players)
+            // prendi il player con l'identità id
+            foreach(Player? p in Players)
             {
-                if(p.Identity == id)
+                if(p != null && p.Identity == id)
                 {
-                    foreach(Pawn pa in p.Pawns)
+                    // prendi il pawn con il travestimento del player
+                    foreach (Pawn pa in p.Pawns)
                     {
                         if (pa.Disguise == p.Disguise) return pa;
                     }
@@ -186,9 +195,8 @@ namespace Inkognito.Core
         /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>
         public void PlayTurn()
         {
+            // TODO questo deve diventare un comando passato al player
             CurrentPlayer.PlayTurn(this);
-
-            // TODO: verificare se qualcuno ha dichiarato missione compiuta e compiere le dovute verifiche
         }
 
         /// <summary>Stampa lo stato completo di debug, comprese le informazioni segrete dei giocatori.</summary>
@@ -413,39 +421,6 @@ namespace Inkognito.Core
             remaining.RemoveAt(index);
             return value;
         }
-
-        public IReadOnlyList<IGameEvent> SubmitCommand(IGameCommand command)
-        {
-            IReadOnlyList<IGameEvent> events = command switch
-            {
-                StartGameCommand => HandleGameStart(),
-
-                _ => throw new InvalidOperationException(
-                    $"Unknown command: {command.GetType().Name}")
-            };
-
-            foreach (var gameEvent in events)
-            {
-                EventOccurred?.Invoke(gameEvent);
-            }
-
-            return events;
-        }
-
-        private IReadOnlyList<IGameEvent> HandleGameStart()
-        {
-            // Qui, per ora, niente di particolare.
-            // Il comando ha semplicemente avviato la partita.
-
-            return new List<IGameEvent>
-            { 
-                new GameStartedEvent()
-            };
-        }
-
     }
-
-
-    
 }
 

@@ -458,8 +458,6 @@ namespace Inkognito.Core.Brains
         /// <returns></returns>
         public bool ShouldDeclareMissionCompleted(Player me, GameState gameState)
         {
-            
-
             if(me.Identity == Identity.A)
             {
                 if(gameState.AmbassadorReport != null)
@@ -476,7 +474,13 @@ namespace Inkognito.Core.Brains
             {
                 if (m.VerifyVictoryConditions(gameState)) result = true;
             }
-            return result;
+            // o gioco da solo, oppure il mio partner deve essere non null (mi devo fidare di qualcuno)
+            if(me.Memory!.IMustPlayAlone == YES_OR_NO.DONT_KNOW) return false;
+            if(me.Memory!.IMustPlayAlone == YES_OR_NO.YES || me.MyPartner is not null)
+            {
+                return result;
+            }
+            return false;
         }
 
         private static bool ShouldAmbassadorDepositReport(Player me)
@@ -655,6 +659,7 @@ namespace Inkognito.Core.Brains
                     if (k.IsMyPartner == YES_OR_NO.YES)
                     {
                         brainOwner.MyPartner = gameState.GetPlayerByColor(k.About);
+                        brainOwner.Memory!.IMustPlayAlone = YES_OR_NO.NO;
                     }
                 }
                 // aggiorna tutte le altre knowledge.
@@ -708,7 +713,7 @@ namespace Inkognito.Core.Brains
 
             if(gameState.ActivePlayers == 3)
             {
-                SetEventuallyPlayAlone(brainOwner);
+                SetEventuallyPlayAlone(brainOwner, gameState);
                 if(brainOwner.Memory!.IMustPlayAlone == YES_OR_NO.YES)
                 {
                     // Se devi giocare da solo, aggiorna subito la missione e scappa!
@@ -723,7 +728,7 @@ namespace Inkognito.Core.Brains
         /// </summary>
         /// <param name="me"></param>
         /// <param name="memory"></param>
-        private void SetEventuallyPlayAlone(Player me)
+        private void SetEventuallyPlayAlone(Player me, GameState g)
         {
             PlayerMemory? memory = me.Memory;
             if (memory == null) return;
@@ -739,25 +744,32 @@ namespace Inkognito.Core.Brains
                 otherPlayersKnowledge.Add(k);
             }
 
-            if(otherPlayersKnowledge.Count == 2)
+            bool someAreUnknown = false;
+
+            foreach (var k in otherPlayersKnowledge)
             {
-                var p0IsMyPartner = otherPlayersKnowledge[0].IsMyPartner;
-                var p1IsMyPartner = otherPlayersKnowledge[1].IsMyPartner;
-                if (p0IsMyPartner == YES_OR_NO.NO && p1IsMyPartner == YES_OR_NO.NO)
-                {
-                    memory.IMustPlayAlone = YES_OR_NO.YES;
-                    
-                }
-                else if(p0IsMyPartner == YES_OR_NO.YES || p1IsMyPartner == YES_OR_NO.YES)
+                if (k.IsMyPartner == YES_OR_NO.YES)
                 {
                     memory.IMustPlayAlone = YES_OR_NO.NO;
+                    me.MyPartner = g.GetPlayerByColor(k.About);
+                    return;
                 }
-                else
+                else if (k.IsMyPartner == YES_OR_NO.DONT_KNOW)
                 {
-                    memory.IMustPlayAlone = YES_OR_NO.DONT_KNOW;
+                    someAreUnknown = true;
+
                 }
             }
+            if (someAreUnknown)
+            {
+                memory.IMustPlayAlone = YES_OR_NO.DONT_KNOW;
+
+            }
+            else
+            {
+                // se sono arrivato qui, sono tutti noti, e nessuno è il mio partner. Quindi devo giocare da solo
+                memory.IMustPlayAlone = YES_OR_NO.NO;
+            }
         }
-        
     }
 }

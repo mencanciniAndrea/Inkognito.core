@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+    <PackageReference Include="System.Threading.Channels" Version="10.0.12" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <EmbeddedResource Include="board.yaml" LogicalName="Inkognito.Core.board.yaml" />
   </ItemGroup>
