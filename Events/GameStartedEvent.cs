@@ -4,7 +4,11 @@ using System.Text;
 
 namespace Inkognito.Core.Events
 {
-    public record GameStartedEvent:IGameEvent
+    public sealed class GameStartedEvent : IGameEvent
     {
+        public override string ToString()
+        {
+            return "GameStartedEvent: The game has started.";
+        }
     }
 }

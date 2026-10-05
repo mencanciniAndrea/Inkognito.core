@@ -1,12 +1,12 @@
 using Inkognito.Core.Commands;
 using Inkognito.Core.Events;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Inkognito.Core
@@ -14,8 +14,8 @@ namespace Inkognito.Core
     public sealed class GameState
     {
 
-        private readonly Channel<IGameCommand> _commands;
-        private readonly Channel<IGameEvent> _events;
+        public ConcurrentQueue<IGameCommand> Commands { get; } = new();
+        public ConcurrentQueue<IGameEvent> Events { get; } = new();
 
         private Task? _gameTask;
 
@@ -96,7 +96,7 @@ namespace Inkognito.Core
             AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
-            List<Pawn> pawns = new List<Pawn> { };
+            List<Pawn> pawns = new () { };
 
             var players = new Player?[playerNames.Length];
             CreatePlayers(playerNames, random, identities, disguises, missions, colors, pawns, players);
@@ -120,9 +120,51 @@ namespace Inkognito.Core
             CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
             // TODO: mandare la carta PLAYER_START al giocatore che inizia il turno
 
+
+            _gameTask = Task.Run(async () =>
+            {
+                while (!GameOver)
+                {
+                    if (Commands.TryDequeue(out var command))
+                    {
+                        try
+                        {
+                            if (command is StartGameCommand startGameCommand)
+                            {
+                                this.StartGame();
+                            }
+                            else if (command is IGameCommand gameCommand)
+                            {
+                                // Esegui il comando specifico
+                                // gameCommand.Execute(this);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.Error.WriteLine($"Errore durante l'esecuzione del comando {command}: {ex}");
+                        }
+                    }
+                    else
+                    {
+                        await Task.Delay(10); // Attendere un breve periodo prima di controllare nuovamente la coda dei comandi
+                    }
+                }
+            });
         }
 
-        
+        public void StartGame()
+        {
+            if (_gameTask is null)
+                throw new InvalidOperationException("Il gioco non è stato inizializzato correttamente.");
+            // Invia l'evento di inizio turno al giocatore corrente
+            Events.Enqueue(new GameStartedEvent());
+            while(!GameOver)
+            {
+                PlayTurn();
+                AdvanceTurn();
+            }
+        }
+
         public void DepositReport(AmbassadorReport report)
         {
             if (report is null)
@@ -196,6 +238,7 @@ namespace Inkognito.Core
         public void PlayTurn()
         {
             // TODO questo deve diventare un comando passato al player
+            Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
             CurrentPlayer.PlayTurn(this);
         }
 
@@ -313,6 +356,8 @@ namespace Inkognito.Core
         {
             Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
 
+            GameEndedEvent geev;
+
             if(whoDeclares.Identity == Identity.A)
             {
                 throw new ArgumentException("L'ambasciatore non deve usare questo metodo per dichiarare missione compiuta, ma DepositAmbassadorReport()!");
@@ -331,6 +376,8 @@ namespace Inkognito.Core
                 sb.AppendJoin(" and ", GetEnemies(lonely));
                 sb.Append(" win!");
                 Console.Out.WriteLine(sb);
+
+                geev = new GameEndedEvent( GetEnemies(lonely) );
             }
             else
             {
@@ -338,6 +385,7 @@ namespace Inkognito.Core
                 if (m.VerifyVictoryConditions(this))
                 {
                     Console.Out.WriteLine($"Mission Completed! {whoDeclares.Name} wins, fleeing successfully!");
+                    geev = new GameEndedEvent(new () { whoDeclares });
                 }
                 else
                 {
@@ -346,13 +394,16 @@ namespace Inkognito.Core
                     sb.AppendJoin(" and ", GetEnemies(lonely));
                     sb.Append(" win!");
                     Console.Out.WriteLine(sb);
+                    geev = new GameEndedEvent(GetEnemies(lonely));
                 }
             }
             GameOver = true;
+            Events.Enqueue(geev);
         }
 
         public void DeclareMissionComplete(Player whoDeclares, Player declaredPartner)
         {
+            GameEndedEvent geev;
             if(whoDeclares == null && declaredPartner == null)
             {
                 throw new ArgumentNullException("Non puoi dichiarare una missione compiuta con un partner null!");
@@ -368,7 +419,11 @@ namespace Inkognito.Core
                 StringBuilder sb = new();
                 sb.Append($"L'Ambasciatore vi ha smascherati!{AmbassadorPlayer!.Name} vince!");
                 Console.Out.WriteLine(sb);
+
+                geev = new GameEndedEvent(new() { AmbassadorPlayer });
+                
                 GameOver = true;
+                Events.Enqueue(geev);
                 return;
             }
 
@@ -383,6 +438,7 @@ namespace Inkognito.Core
                 sb.AppendJoin(" and ", new[]{ whoDeclares.Name,declaredPartner.Name});
                 sb.Append(" win!");
                 Console.Out.WriteLine(sb);
+                geev = new GameEndedEvent(new() { whoDeclares, declaredPartner });
             }
             else
             {
@@ -391,9 +447,8 @@ namespace Inkognito.Core
                 sb.AppendJoin(" and ", GetEnemies(whoDeclares.Identity));
                 sb.Append(" win!");
                 Console.Out.WriteLine(sb);
+                geev = new GameEndedEvent(GetEnemies(whoDeclares.Identity));
             }
-
-
 
             foreach(Player? p in Players)
             {
@@ -403,6 +458,7 @@ namespace Inkognito.Core
                 sb.AppendJoin(", ", p.Pawns);
                 Console.Out.WriteLine(sb);
             }
+            Events.Enqueue(geev);
             GameOver = true;
         }
 

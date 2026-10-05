@@ -4,7 +4,16 @@ using System.Text;
 
 namespace Inkognito.Core.Commands
 {
-    public record StartGameCommand : IGameCommand
+    public sealed class StartGameCommand : IGameCommand
     {
+
+        public StartGameCommand()
+        {
+        }
+
+        public override string ToString()
+        {
+            return "StartGameCommand: Start the game.";
+        }
     }
 }
