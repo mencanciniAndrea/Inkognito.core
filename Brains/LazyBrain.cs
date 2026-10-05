@@ -472,7 +472,17 @@ namespace Inkognito.Core.Brains
             bool result = false;
             if (m != null)
             {
-                if (m.VerifyVictoryConditions(gameState)) result = true;
+                if (m.VerifyVictoryConditions(gameState))
+                {
+                    Console.Out.WriteLine($"{me.Name} sostiene Missione {m.Description} Compiuta");
+                    result = true;
+                }
+                else
+                {
+                    Console.Out.WriteLine($"{me.Name} - Missione {m.Description} da completare");
+                    result = false;
+                }
+
             }
             // o gioco da solo, oppure il mio partner deve essere non null (mi devo fidare di qualcuno)
             if(me.Memory!.IMustPlayAlone == YES_OR_NO.DONT_KNOW) return false;
@@ -768,7 +778,7 @@ namespace Inkognito.Core.Brains
             else
             {
                 // se sono arrivato qui, sono tutti noti, e nessuno è il mio partner. Quindi devo giocare da solo
-                memory.IMustPlayAlone = YES_OR_NO.NO;
+                memory.IMustPlayAlone = YES_OR_NO.YES;
             }
         }
     }

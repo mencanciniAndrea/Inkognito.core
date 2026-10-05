@@ -9,14 +9,25 @@ namespace Inkognito.Core
         public Pawn Pawn { get;  set; }
         public Cell To { get; set; }
 
+        public MoveType MoveType { get; set; }
+
         public Cell? Jumping { get; set; } = null;
 
         public Edge? Via { get; set; } = null;
 
+        public Move(Pawn pawn, Cell to, MoveType moveType, Cell? jumping = null, Edge? via = null)
+        {
+            Pawn = pawn;
+            To = to;
+            MoveType = moveType;
+            Jumping = jumping;
+            Via = via;
+        }
+
         public override string ToString()
         {
-            if (Jumping == null) return $"Move {Pawn} to {To}";
-            else return $"Move {Pawn} to {To} jumping {Jumping} via {Via}";
+            if (Jumping == null) return $"Move {Pawn} to {To} ({MoveType})";
+            else return $"Move {Pawn} to {To} jumping {Jumping} via {Via} ({MoveType})";
         }
 
     }

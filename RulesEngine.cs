@@ -45,7 +45,7 @@ namespace Inkognito.Core
                         Pawn p = pawnsOnCell[0];
                         if (p.Color != pawn.Color)
                         {
-                            legalMoves.Add(new Move { Pawn = pawn, To = target });
+                            legalMoves.Add(new Move(pawn, target, moveType));
 
                             // check: altre mosse legali sono il salto della pedina su un posto vuoto successivo, a prescindere che il prossimo sia acqua o terra
                             foreach (var nextLink in target.Edges)
@@ -54,14 +54,14 @@ namespace Inkognito.Core
                                 var pawnsOnNextCell = gameBoard.GetPawnsOnCell(nextTarget);
                                 if (pawnsOnNextCell.Count == 0)
                                 {
-                                    legalMoves.Add(new Move { Pawn = pawn, To = nextTarget, Jumping = target, Via = nextLink});
+                                    legalMoves.Add(new Move(pawn, nextTarget, moveType, jumping: target, via: nextLink));
                                 }
                             }
                         }
                     }
                     else if (pawnsOnCell.Count == 0)
                     {
-                        legalMoves.Add(new Move { Pawn = pawn, To = target });
+                        legalMoves.Add(new Move(pawn, target, moveType));
                     }
                     else
                     {
@@ -108,7 +108,7 @@ namespace Inkognito.Core
 
                 if(cellIsEmpty || cellHasOnlyOnePawn && pawnIsCurrentPlayerPawn)
                 {
-                    moves.Add(new Move { Pawn = pawn, To = targetCell });
+                    moves.Add(new Move(pawn, targetCell, MoveType.AnotherPlayerPawn));
                 }
             }
 
@@ -144,7 +144,7 @@ namespace Inkognito.Core
                 }
                 if (targetCellIsEmpty || (thereIsOnlyOnePawn && targetCellIsOccupiedByPawnOfCurrentPlayer)) 
                 {
-                    moves.Add(new Move { Pawn = pawn, To = link.Travel(pawn.Position) });
+                    moves.Add(new Move(pawn, link.Travel(pawn.Position), MoveType.Ambassador));
                 }
             }
 
@@ -158,7 +158,7 @@ namespace Inkognito.Core
 
             foreach (var link in pawn.Position.Edges)
             {
-                legalMoves.Add(new Move { Pawn = pawn, To = link.Travel(pawn.Position) });
+                legalMoves.Add(new Move(pawn, link.Travel(pawn.Position), MoveType.Ambassador));
             }
 
             return legalMoves;
@@ -326,7 +326,7 @@ namespace Inkognito.Core
 
                 if (cellIsEmpty)
                 {
-                    moves.Add(new Move { Pawn = p, To = targetCell });
+                    moves.Add(new Move(p, targetCell, MoveType.DismissPawn));
                 }
             }
             return moves;
@@ -344,7 +344,7 @@ namespace Inkognito.Core
 
                 if (targetCellIsEmpty)
                 {
-                    result.Add(new Move { Pawn = p, To = targetCell });
+                    result.Add(new Move(p, targetCell, MoveType.DismissAmbassador));
                 }
             }
             if (result.Count == 0)

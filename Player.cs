@@ -23,6 +23,9 @@ namespace Inkognito.Core
         public Disguise Disguise { get; }
         public MissionPart Mission { get; }
         public IReadOnlyList<Pawn> Pawns { get; }
+
+        public Dictionary <Disguise, Pawn> PawnsByDisguise { get; }
+
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
         public PlayerObjective CurrentObjective { get; private set; }
@@ -59,6 +62,7 @@ namespace Inkognito.Core
             Disguise = disguise;
             Mission = mission;
             Pawns = Array.AsReadOnly(pawns);
+            PawnsByDisguise = pawns.ToDictionary(p => p.Disguise, p => p);
             Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
             _random = r;
             CurrentObjective = PlayerObjective.FIND_PARTNER;
@@ -95,26 +99,26 @@ namespace Inkognito.Core
             // ma si potrebbe fare in modo che durante un inganno, ci possano essere degli archi indietro
         }
 
-        public void PlayTurn(GameState gameState)
+        public void PlayTurn(GameState gameState, IReadOnlyList<MoveType> availableMoves)
         {
             if (gameState is null)
                 throw new ArgumentNullException(nameof(gameState));
+            if (availableMoves is null)
+                throw new ArgumentNullException(nameof(availableMoves));
             if (!ReferenceEquals(gameState.CurrentPlayer, this))
                 throw new InvalidOperationException("Può giocare soltanto il giocatore corrente della partita.");
 
-            bool IAmAmbassador = Identity == Identity.A;
-            AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
-                gameState.prophecyPhantom.DrawMoves();
+            AvailableMoves = availableMoves;
 
             StringBuilder sb = new();
             sb.Append("Mosse disponibili: {");
-            sb.AppendJoin(", ",AvailableMoves);
+            sb.AppendJoin(", ", availableMoves);
             sb.Append("}");
             Console.Out.WriteLine($"{sb}");
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
-            Plan movementsPlan = Brain.GetBestMovePlan(gameState, AvailableMoves, TurnPhase.Move);
+            Plan movementsPlan = Brain.GetBestMovePlan(gameState, availableMoves, TurnPhase.Move);
 
             sb = new();
             sb.Append($"{Name} segue: ");
@@ -122,7 +126,7 @@ namespace Inkognito.Core
             Console.Out.WriteLine($"{sb}");
             foreach (var move in movementsPlan.Moves)
             {
-                gameState.Board.ApplyMove(move);
+                gameState.SubmitMove(move);
             }
 
             // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
@@ -230,7 +234,7 @@ namespace Inkognito.Core
                 Console.Out.WriteLine(sb);
                 foreach (var move in dismissionPlan.Moves)
                 {
-                    gameState.Board.ApplyMove(move);
+                    gameState.SubmitMove(move);
                 }
 
                 // valuta se dichiarare missione compiuta

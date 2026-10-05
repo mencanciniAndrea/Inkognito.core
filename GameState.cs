@@ -30,6 +30,11 @@ namespace Inkognito.Core
         public Player? AmbassadorPlayer { get; private set; }
         /// <summary>Cinque posti: Red, Blue, Green, Yellow, Black. I posti assenti sono null.</summary>
         public IReadOnlyList<Player?> Players { get; }
+
+        public Dictionary<PlayerColor, Player> PlayersByColor { get; }
+        public Dictionary<Identity, Player> PlayersByIdentity { get; }
+
+
         /// <summary>Seed della partita; null se viene fornito direttamente un Random esterno.</summary>
         public int? Seed { get; }
 
@@ -100,26 +105,29 @@ namespace Inkognito.Core
 
             var players = new Player?[playerNames.Length];
             CreatePlayers(playerNames, random, identities, disguises, missions, colors, pawns, players);
+            Players = Array.AsReadOnly(players);
+            PlayersByColor = Players.Where(p => p != null).ToDictionary(p => p!.Color, p => p!);
+            PlayersByIdentity = Players.Where(p => p != null).ToDictionary(p => p!.Identity, p => p!);
 
-            if (GetPlayerByColor(PlayerColor.Black) == null)
+            if (PlayersByColor.TryGetValue(PlayerColor.Black, out var blackPlayer) && blackPlayer == null)
             {
                 pawns.Add(AmbassadorPawn);
             }
 
             Board.Pawns = pawns;
 
-
             // Creazione del ProphecyPhantom
             prophecyPhantom = new ProphecyPhantom(random);
 
             // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.
-            Players = Array.AsReadOnly(players);
+            
             var occupiedSlots = Enumerable.Range(0, Players.Count)
                 .Where(index => Players[index] is not null).ToArray();
 
             CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
             // TODO: mandare la carta PLAYER_START al giocatore che inizia il turno
 
+            
 
             _gameTask = Task.Run(async () =>
             {
@@ -129,14 +137,18 @@ namespace Inkognito.Core
                     {
                         try
                         {
-                            if (command is StartGameCommand startGameCommand)
+                            switch (command)
                             {
-                                this.StartGame();
-                            }
-                            else if (command is IGameCommand gameCommand)
-                            {
-                                // Esegui il comando specifico
-                                // gameCommand.Execute(this);
+                                case StartGameCommand startGameCommand:
+                                    this.StartGame();
+                                    break;
+                                case IGameCommand gameCommand:
+                                    throw new ArgumentException($"Comando non implementato: {command.GetType().Name}");
+                                    // Esegui il comando specifico
+                                    // gameCommand.Execute(this);
+                                    break;
+                                default:
+                                    throw new ArgumentException($"Comando sconosciuto: {command.GetType().Name}");
                             }
                         }
                         catch (Exception ex)
@@ -203,18 +215,9 @@ namespace Inkognito.Core
         public Pawn? GetPawnOf(Identity id)
         {
             // prendi il player con l'identità id
-            foreach(Player? p in Players)
-            {
-                if(p != null && p.Identity == id)
-                {
-                    // prendi il pawn con il travestimento del player
-                    foreach (Pawn pa in p.Pawns)
-                    {
-                        if (pa.Disguise == p.Disguise) return pa;
-                    }
-                }
-            }
-            return null;
+            Player pl = GetPlayerById(id)!;
+            Pawn pa = pl!.PawnsByDisguise[pl.Disguise];
+            return pa;
         }
 
         private Player CreateAmbassadorPlayer(string name, Random random)
@@ -226,20 +229,31 @@ namespace Inkognito.Core
 
         public Player? GetPlayerByColor(PlayerColor color)
         {
-            if(color == PlayerColor.Black)
-            {
-                return AmbassadorPlayer;
-            }
-
-            return Players.Single(p => p != null && p.Color == color);
+            return PlayersByColor.TryGetValue(color, out var player) ? player : null;
         }
 
         /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>
         public void PlayTurn()
         {
-            // TODO questo deve diventare un comando passato al player
             Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
-            CurrentPlayer.PlayTurn(this);
+
+            bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
+            IReadOnlyList<MoveType> AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
+                prophecyPhantom.DrawMoves();
+
+            Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
+
+            CurrentPlayer.PlayTurn(this, AvailableMoves);
+        }
+
+        public void SubmitMove(Move move)
+        {
+            if (move is null)
+                throw new ArgumentNullException(nameof(move));
+            
+            Events.Enqueue(new PawnMovedEvent(CurrentPlayer, move.Pawn, move.Pawn.Position, move.To, move.MoveType));
+
+            Board.ApplyMove(move);
         }
 
         /// <summary>Stampa lo stato completo di debug, comprese le informazioni segrete dei giocatori.</summary>
@@ -316,11 +330,7 @@ namespace Inkognito.Core
 
         private Player? GetPlayerById(Identity id)
         {
-            foreach(Player? p in Players)
-            {
-                if (p != null && p.Identity == id) return p;
-            }
-            return null;
+            return PlayersByIdentity.TryGetValue(id, out var player) ? player : null;
         }
 
         private List<Player> GetEnemies(Identity id)
@@ -331,22 +341,24 @@ namespace Inkognito.Core
 
             if (X_Z.Contains(id))
             {
-                foreach (Player? p in Players)
+                if(PlayersByIdentity.TryGetValue(Identity.F, out var fPlayer))
                 {
-                    if (p != null && F_B.Contains(p.Identity))
-                    {
-                        result.Add(p);
-                    }
+                    result.Add(fPlayer);
+                }
+                if(PlayersByIdentity.TryGetValue(Identity.B, out var bPlayer))
+                {
+                    result.Add(bPlayer);
                 }
             }
             if(F_B.Contains(id))
             {
-                foreach(Player? p in Players)
+                if(PlayersByIdentity.TryGetValue(Identity.X, out var xPlayer))
                 {
-                    if(p != null && X_Z.Contains(p.Identity))
-                    {
-                        result.Add(p);
-                    }
+                    result.Add(xPlayer);
+                }
+                if(PlayersByIdentity.TryGetValue(Identity.Z, out var zPlayer))
+                {
+                    result.Add(zPlayer);
                 }
             }
             return result;
@@ -457,6 +469,10 @@ namespace Inkognito.Core
                 sb.Append($"{p.Name}, {p.Color}, {p.Identity}, {p.Disguise}, {p.Mission} - ");
                 sb.AppendJoin(", ", p.Pawns);
                 Console.Out.WriteLine(sb);
+            }
+            if(AmbassadorPlayer == null)
+            {
+                Console.Out.WriteLine($"AmbassadorPawn: {AmbassadorPawn}");
             }
             Events.Enqueue(geev);
             GameOver = true;

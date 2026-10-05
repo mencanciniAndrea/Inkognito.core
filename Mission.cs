@@ -95,19 +95,14 @@ namespace Inkognito.Core
         {
 
             Pawn p = g.GetPawnOf(id) ?? throw new ArgumentNullException($"{id} non può essere null a questo punto!");
-            switch (id)
+            return id switch
             {
-                case Identity.F:
-                    return new Mission("Andate alla casella 5", new List<VictoryCondition> { new(p, TargetPosition.POSITION_5) });
-                case Identity.B:
-                    return new Mission("Andate alla casella 1", new List<VictoryCondition> { new(p, TargetPosition.POSITION_1) });
-                case Identity.X:
-                    return new Mission("Andate alla casella 6", new List<VictoryCondition> { new(p, TargetPosition.POSITION_6) });
-                case Identity.Z:
-                    return new Mission("Andate alla casella 4", new List<VictoryCondition> { new(p, TargetPosition.POSITION_4) });
-                default:
-                    return new Mission("Unkown", new List<VictoryCondition> {});
-            }
+                Identity.F => new Mission("Andate alla casella 5", new List<VictoryCondition> { new(p, TargetPosition.POSITION_5) }),
+                Identity.B => new Mission("Andate alla casella 1", new List<VictoryCondition> { new(p, TargetPosition.POSITION_1) }),
+                Identity.X => new Mission("Andate alla casella 6", new List<VictoryCondition> { new(p, TargetPosition.POSITION_6) }),
+                Identity.Z => new Mission("Andate alla casella 4", new List<VictoryCondition> { new(p, TargetPosition.POSITION_4) }),
+                _ => new Mission("Unkown", new List<VictoryCondition> { }),
+            };
         }
 
 
@@ -116,53 +111,37 @@ namespace Inkognito.Core
             switch (mF)
             {
                 case MissionPart.Alfa:
-                    switch (mB)
+                    return mB switch
                     {
-                        case MissionPart.Bravo:
-                            return new Mission("Andate su X con qualunque pedina",F_A_B_B(g));
-                        case MissionPart.Charlie:
-                            return new Mission("Portate F sulla casella 5 (17)", F_A_B_C(g) );
-                        case MissionPart.Delta:
-                            return new Mission("Andate su Z con qualunque pedina", F_A_B_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Bravo => new Mission("Andate su X con qualunque pedina", F_A_B_B(g)),
+                        MissionPart.Charlie => new Mission("Portate F sulla casella 5 (17)", F_A_B_C(g)),
+                        MissionPart.Delta => new Mission("Andate su Z con qualunque pedina", F_A_B_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Bravo:
-                    switch(mB)
+                    return mB switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission("Andate su X con qualunque pedina", F_A_B_B(g));
-                        case MissionPart.Charlie:
-                            return new Mission("Andate su A con qualunque pedina", F_B_B_C(g) );
-                        case MissionPart.Delta:
-                            return new Mission("Portate B sulla casella 1", F_B_B_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("Andate su X con qualunque pedina", F_B_B_A(g)),
+                        MissionPart.Charlie => new Mission("Andate su A con qualunque pedina", F_B_B_C(g)),
+                        MissionPart.Delta => new Mission("Portate B sulla casella 1", F_B_B_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Charlie:
-                    switch (mB)
+                    return mB switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission("Portate F sulla casella 7 (41)",  F_C_B_A(g) );
-                        case MissionPart.Bravo:
-                            return new Mission("Andate su A con qualunque pedina", F_B_B_C(g) );
-                        case MissionPart.Delta:
-                            return new Mission("Portate A all'Ambasciata", F_C_B_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("Portate F sulla casella 7 (41)", F_C_B_A(g)),
+                        MissionPart.Bravo => new Mission("Andate su A con qualunque pedina", F_C_B_B(g)),
+                        MissionPart.Delta => new Mission("Portate A all'Ambasciata", F_C_B_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Delta:
-                    switch(mB)
+                    return mB switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission("Andate su Z con qualunque pedina",  F_A_B_D(g) );
-                        case MissionPart.Bravo:
-                            return new Mission( "portate F su B o B su F", F_D_B_B(g) );
-                        case MissionPart.Charlie:
-                            return new Mission( "portate A alla casella 8 (45)",  F_D_B_C(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("Andate su Z con qualunque pedina", F_D_B_A(g)),
+                        MissionPart.Bravo => new Mission("portate F su B o B su F", F_D_B_B(g)),
+                        MissionPart.Charlie => new Mission("portate A alla casella 8 (45)", F_D_B_C(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 default:
                     return new Mission("Mission Unknown", new List<VictoryCondition>());
             }
@@ -172,78 +151,65 @@ namespace Inkognito.Core
             switch(mZ)
             {
                 case MissionPart.Alfa:
-                    switch(mX)
+                    return mX switch
                     {
-                        case MissionPart.Bravo:
-                            return new Mission("Andate su A con qualunque pedina", Z_A_X_B(g) );
-                        case MissionPart.Charlie:
-                            return new Mission("Andate su B con qualunque pedina", Z_A_X_C(g) );
-                        case MissionPart.Delta:
-                            return new Mission( "Portate Z su A o A su Z", Z_A_X_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Bravo => new Mission("Andate su A con qualunque pedina", Z_A_X_B(g)),
+                        MissionPart.Charlie => new Mission("Andate su B con qualunque pedina", Z_A_X_C(g)),
+                        MissionPart.Delta => new Mission("Portate Z su A o A su Z", Z_A_X_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Bravo:
-                    switch(mX)
+                    return mX switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission( "Andate su A con qualunque pedina",  Z_A_X_B(g));
-                        case MissionPart.Charlie:
-                            return new Mission("portate Z su X o X su Z",  Z_B_X_C(g) );
-                        case MissionPart.Delta:
-                            return new Mission("Andate su F con qualunque pedina",  Z_B_X_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("Andate su A con qualunque pedina", Z_B_X_A(g)),
+                        MissionPart.Charlie => new Mission("portate Z su X o X su Z", Z_B_X_C(g)),
+                        MissionPart.Delta => new Mission("Andate su F con qualunque pedina", Z_B_X_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Charlie:
-                    switch (mX)
+                    return mX switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission("Andate su B con qualunque pedina",  Z_A_X_C(g) );
-                        case MissionPart.Bravo:
-                            return new Mission("portate Z su 4 (56)", Z_C_X_B(g) );
-                        case MissionPart.Delta:
-                            return new Mission( "portate X su 2 (23)",  Z_C_X_D(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("Andate su B con qualunque pedina", Z_C_X_A(g)),
+                        MissionPart.Bravo => new Mission("portate Z su 4 (56)", Z_C_X_B(g)),
+                        MissionPart.Delta => new Mission("portate X su 2 (23)", Z_C_X_D(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 case MissionPart.Delta:
-                    switch (mX)
+                    return mX switch
                     {
-                        case MissionPart.Alfa:
-                            return new Mission("portate A su 3 (38)",  Z_D_X_A(g) );
-                        case MissionPart.Bravo:
-                            return new Mission("Andate su F con qualunque pedina", Z_B_X_D(g) );
-                        case MissionPart.Charlie:
-                            return new Mission("portate X su 6 (4)", Z_D_X_C(g) );
-                        default:
-                            return new Mission("Mission Unknown", new List<VictoryCondition>());
-                    }
+                        MissionPart.Alfa => new Mission("portate A su 3 (38)", Z_D_X_A(g)),
+                        MissionPart.Bravo => new Mission("Andate su F con qualunque pedina", Z_B_X_D(g)),
+                        MissionPart.Charlie => new Mission("portate X su 6 (4)", Z_D_X_C(g)),
+                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                    };
                 default:
                     return new Mission("Mission Unknown", new List<VictoryCondition>());
             }    
         }
+        private static List<VictoryCondition> F_B_B_A(GameState g)
+        {
+            return F_A_B_B(g);
+        }
 
         private static List<VictoryCondition> F_A_B_B(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new ();
 
             TargetPosition t = TargetPosition.X_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.X);
             if(xPawn == null)
                 t = TargetPosition.Z_POSITION;
 
-
-            foreach (Player p in g.Players)
+            Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
+            foreach(Pawn pa in F.Pawns)
             {
-                if (p == null) continue;
-                if(p.Identity == Identity.F || p.Identity == Identity.B)
-                {
-                    foreach(Pawn pa in p.Pawns)
-                    {
-                        vc.Add(new VictoryCondition(pa, t));
-                    }
-                }
+                vc.Add(new VictoryCondition(pa, t));
+            }
+
+            Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
+            foreach(Pawn pa in B.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, t));
             }
 
             return vc;
@@ -257,47 +223,62 @@ namespace Inkognito.Core
             return vc;
         }
 
+        private static List<VictoryCondition> F_D_B_A(GameState g)
+        {
+            return F_A_B_D(g);
+        }
+
         private static List<VictoryCondition> F_A_B_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new ();
 
             TargetPosition t = TargetPosition.Z_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.Z);
             if (xPawn == null)
                 t = TargetPosition.X_POSITION;
 
-            foreach (Player p in g.Players)
+            Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
+            foreach (Pawn pa in F.Pawns)
             {
-                if (p == null) continue;
+                vc.Add(new VictoryCondition(pa, t));
+            }
 
-                if (p.Identity == Identity.F || p.Identity == Identity.B)
-                {
-                    foreach (Pawn pa in p.Pawns)
-                    {
-                        vc.Add(new VictoryCondition(pa, t));
-                    }
-                }
+            Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
+            foreach (Pawn pa in B.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, t));
             }
 
             return vc;
         }
 
+        /// <summary>
+        /// Andate sull'ambasciatore con qualunque pedina. Equivale a F_B_B_C.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
+        private static List<VictoryCondition> F_C_B_B(GameState g)
+        {
+            return F_B_B_C(g);
+        }
+        /// <summary>
+        /// Andate sull'ambasciatore con qualunque pedina. Equivale a F_C_B_B.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
         private static List<VictoryCondition> F_B_B_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new();
 
-            foreach (Player p in g.Players)
+            Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
+            foreach (Pawn pa in F.Pawns)
             {
-                if(p != null)
-                {
-                    if (p.Identity == Identity.F || p.Identity == Identity.B)
-                    {
-                        foreach (Pawn pa in p.Pawns)
-                        {
-                            vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
-                        }
-                    }
-                }
+                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+            }
+            Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
+            foreach (Pawn pa in B.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
             }
 
             return vc;
@@ -341,7 +322,7 @@ namespace Inkognito.Core
 
         private static List<VictoryCondition> F_D_B_B(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new ();
             Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
             vc.Add(new VictoryCondition(F, TargetPosition.B_POSITION));
             return vc;
@@ -349,7 +330,7 @@ namespace Inkognito.Core
 
         private static List<VictoryCondition> F_D_B_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<VictoryCondition> vc = new ();
 
             // check: se il giocatore ambasciatore è null
             if (g.GetPlayerByColor(PlayerColor.Black) == null)
@@ -370,25 +351,55 @@ namespace Inkognito.Core
             return vc;
         }
 
+        /// <summary>
+        /// speculare a Z_A_X_B. Andate su A con qualunque pedina.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
+        private static List<VictoryCondition> Z_B_X_A(GameState g)
+        {
+            return Z_A_X_B(g);
+        }
+
+        /// <summary>
+        /// Andate su A con qualunque pedina. Equivale a Z_B_X_A.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
         private static List<VictoryCondition> Z_A_X_B(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
 
-            foreach (Player p in g.Players)
+            Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
+            foreach(Pawn pa in X.Pawns)
             {
-                if (p == null) continue;
-                if (p.Identity == Identity.Z || p.Identity == Identity.X)
-                {
-                    foreach (Pawn pa in p.Pawns)
-                    {
-                        vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
-                    }
-                }
+                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+            }
+            
+            Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
+            foreach (Pawn pa in Z.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
             }
 
             return vc;
         }
 
+        /// <summary>
+        /// Andate su B con qualunque pedina. Se non c'è B, andate su F. Equivale a Z_A_X_C.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
+        private static List<VictoryCondition> Z_C_X_A(GameState g)
+        {
+            return Z_A_X_C(g);
+        }
+
+        /// <summary>
+        /// Andate su B con qualunque pedina. Se non c'è B, andate su F. Equivale a Z_C_X_A.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
         private static List<VictoryCondition>  Z_A_X_C(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
@@ -398,17 +409,15 @@ namespace Inkognito.Core
             if (xPawn == null)
                 t = TargetPosition.F_POSITION;
 
-            
-            foreach (Player p in g.Players)
+            Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
+            foreach(Pawn pa in X.Pawns)
             {
-                if (p == null) continue;
-                if (p.Identity == Identity.Z || p.Identity == Identity.X)
-                {
-                    foreach (Pawn pa in p.Pawns)
-                    {
-                        vc.Add(new VictoryCondition(pa, t));
-                    }
-                }
+                vc.Add(new VictoryCondition(pa, t));
+            }
+            Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
+            foreach (Pawn pa in Z.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, t));
             }
 
             return vc;
@@ -431,7 +440,22 @@ namespace Inkognito.Core
             return vc;
         }
 
-        
+
+        /// <summary>
+        /// Andate su F con qualunque pedina. Se non c'è F, andate su B. Equivale a Z_B_X_D.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
+        private static List<VictoryCondition> Z_D_X_B(GameState g)
+        {
+            return Z_B_X_D(g);
+        }
+
+        /// <summary>
+        /// Aggiunge le condizioni di vittoria per la missione Z_B_X_D. In questa missione, i giocatori Z e X devono raggiungere la posizione F o B a seconda della disponibilità del pedone di F.
+        /// </summary>
+        /// <param name="g"></param>
+        /// <returns></returns>
         private static List<VictoryCondition> Z_B_X_D(GameState g)
         {
             List<VictoryCondition> vc = new List<VictoryCondition>();
@@ -441,16 +465,16 @@ namespace Inkognito.Core
             if (xPawn == null)
                 t = TargetPosition.B_POSITION;
 
-            foreach (Player p in g.Players)
+            Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
+            foreach(Pawn pa in Z.Pawns)
             {
-                if (p == null) continue;
-                if (p.Identity == Identity.Z || p.Identity == Identity.X)
-                {
-                    foreach (Pawn pa in p.Pawns)
-                    {
-                        vc.Add(new VictoryCondition(pa, t));
-                    }
-                }
+                vc.Add(new VictoryCondition(pa, t));
+            }
+
+            Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
+            foreach (Pawn pa in X.Pawns)
+            {
+                vc.Add(new VictoryCondition(pa, t));
             }
 
             return vc;

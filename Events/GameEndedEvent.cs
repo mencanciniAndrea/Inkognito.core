@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 
 namespace Inkognito.Core.Events
 {
@@ -13,7 +14,14 @@ namespace Inkognito.Core.Events
 
         public override string ToString()
         {
-            return $"GameEndedEvent: The game has ended. Winners: {string.Join(", ", Winners)}";
+            StringBuilder sb = new();
+            sb.Append($"GameEndedEvent: The game has ended. Winners: ");
+            foreach(var winner in Winners)
+            {
+                sb.Append($"{winner.Name} ({winner.Color}) e ");
+            }
+            sb.Length -= 3; // Remove the last " e "
+            return  sb.ToString();
         }
     }
 }
