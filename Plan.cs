@@ -10,18 +10,18 @@ namespace Inkognito.Core
         public HashSet<PlanTraits> Traits { get; private set; }
         public List<Move> Moves { get; private set; }
 
-        public Board resultingBoard { get; private set; }
+        public Board ResultingBoard { get; private set; }
 
         public Plan(Board originalBoard)
         {
             Traits = new HashSet<PlanTraits>();
             Moves = new List<Move>();
-            resultingBoard = originalBoard.Clone();
+            ResultingBoard = originalBoard.Clone();
         }
 
         public Plan Clone()
         {
-            Plan result = new(resultingBoard);
+            Plan result = new(ResultingBoard);
             // si fa così perché non voglio ri-applicare le mosse già esistenti
             result.Moves.AddRange(Moves);
             return result;
@@ -30,7 +30,7 @@ namespace Inkognito.Core
         public void AddMove(Move m)
         {
             Moves.Add(m);
-            resultingBoard.ApplyMove(m);
+            ResultingBoard.ApplyMove(m);
         }
 
         public void AddRange(IEnumerable<Move> collection)
@@ -38,7 +38,7 @@ namespace Inkognito.Core
             Moves.AddRange(collection);
             foreach(var m in collection)
             {
-                resultingBoard.ApplyMove(m);
+                ResultingBoard.ApplyMove(m);
             }
         }
 
@@ -61,7 +61,7 @@ namespace Inkognito.Core
             sb.AppendJoin(",", Traits.ToArray());
             sb.AppendLine();
             sb.AppendLine("Brings to: ");
-            sb.AppendLine(resultingBoard.ToString());
+            sb.AppendLine(ResultingBoard.ToString());
             return sb.ToString();
         }
     }

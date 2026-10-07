@@ -172,7 +172,7 @@ namespace Inkognito.Core
                     List<Plan> newPlans = new List<Plan>();
                     foreach (var existingPlan in candidatePlans)
                     {
-                        Board newBoard = existingPlan.resultingBoard.Clone();
+                        Board newBoard = existingPlan.ResultingBoard.Clone();
                         var legalMoves = GenerateLegalMovesForAllPawns(newBoard, moveType, currentPlayer);
                         if (legalMoves.Count == 0)
                         {
@@ -197,7 +197,7 @@ namespace Inkognito.Core
             List<Plan> result = new ();
             foreach (var plan in candidatePlans)
             {
-                if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, TurnPhase.Move))
+                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, TurnPhase.Move))
                 {
                     result.Add(plan);
                 }

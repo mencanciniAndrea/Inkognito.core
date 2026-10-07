@@ -1,8 +1,10 @@
 using Inkognito.Core.Commands;
+using Inkognito.Core.Decisions;
 using Inkognito.Core.Events;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -172,9 +174,34 @@ namespace Inkognito.Core
             Events.Enqueue(new GameStartedEvent());
             while(!GameOver)
             {
-                PlayTurn();
+                //TODO sostituire con PlayTurn() una volta che ci sono tutti i comandi e gli eventi a disposizione
+                PlayTurnOldStyle();
+                
                 AdvanceTurn();
             }
+        }
+
+        public void PlayTurnOldStyle()
+        {
+            //-----------------------------------------------------------------
+            //
+            // INIZIO TURNO
+            //
+            //-----------------------------------------------------------------
+            Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
+
+            //-----------------------------------------------------------------
+            //
+            // ESTRAZIONE MOSSE DISPONIBILI
+            //
+            //-----------------------------------------------------------------
+            bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
+            IReadOnlyList<MoveType> AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
+                prophecyPhantom.DrawMoves();
+
+            Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
+
+            CurrentPlayer.PlayTurn(this, AvailableMoves);
         }
 
         public void DepositReport(AmbassadorReport report)
@@ -210,6 +237,8 @@ namespace Inkognito.Core
             {
                 p?.InitMemory(new(players!));
             }
+
+
         }
 
         public Pawn? GetPawnOf(Identity id)
@@ -235,15 +264,106 @@ namespace Inkognito.Core
         /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>
         public void PlayTurn()
         {
+            //-----------------------------------------------------------------
+            //
+            // INIZIO TURNO
+            //
+            //-----------------------------------------------------------------
             Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
 
+            //-----------------------------------------------------------------
+            //
+            // ESTRAZIONE MOSSE DISPONIBILI
+            //
+            //-----------------------------------------------------------------
             bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
             IReadOnlyList<MoveType> AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
                 prophecyPhantom.DrawMoves();
 
             Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
 
-            CurrentPlayer.PlayTurn(this, AvailableMoves);
+            //-----------------------------------------------------------------
+            //
+            // DECISIONE MOVIMENTI
+            //
+            //-----------------------------------------------------------------
+            MoveDecision moveDecision = CurrentPlayer.DecideMoves(this, AvailableMoves);
+            if (moveDecision.NeedsInput)
+            {
+                Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, AvailableMoves));
+
+                // Mettiti in ascolto sui comandi per un comando di tipo MoveCommand e riassegna la moveDecision
+                // moveDecision = command...
+            }
+
+            foreach(Move m in moveDecision.Moves)
+            {
+                SubmitMove(m);
+            }
+
+
+            //-----------------------------------------------------------------
+            //
+            // DECISIONE INFORMAZIONI DA CHIEDERE
+            //
+            //----------------------------------------------------------------- 
+            List<Pawn> pawnList = new();
+            foreach (var pawn in CurrentPlayer.Pawns)
+            {
+                Cell currentCell = pawn.Position;
+                var pawns = Board.GetPawnsOnCell(currentCell).Where(pawn => pawn.Color != CurrentPlayer.Color);
+                // aggiungi tutti i pedoni sulla cella, filtrando i pedoni del current player 
+                pawnList.AddRange(pawns.ToList());
+            }
+
+            InformationRequestDecision informationToAsk = CurrentPlayer.WhatDoYouWantToAsk(this, pawnList);
+            if (informationToAsk.NeedsInput)
+            {
+                Events.Enqueue(new InfoRequestInputNeededEvent(CurrentPlayer, pawnList));
+                // wait for command: ask these things to these pawns...
+
+                // informationToAsk = await command...
+            }
+
+            //-----------------------------------------------------------------
+            //
+            // DISPATCH DELLE RICHIESTE
+            //
+            //-----------------------------------------------------------------
+            foreach (var req in informationToAsk.InfoToAsk)
+            {
+                Player recipient = PlayersByColor[req.Value.Receiver];
+                InformationReplyDecision reply = recipient.AnswerTo(req.Value);
+                if (reply.NeedsInput)
+                {
+                    Events.Enqueue(new ReplyToInfoRequestInputNeededEvent(req.Value));
+                    // wait for command: reply with these cards to req
+
+                    // reply = await command...
+                }
+
+                if(reply.Answer.Request!.ThroughAmbassador && AmbassadorPlayer is not null)
+                {
+                    // se la richiesta è fatta attraverso l'ambasciatore, anche lui annota le risposte
+                    AmbassadorPlayer.ManageAnswer(this, reply.Answer);
+                }
+
+                CurrentPlayer.ManageAnswer(this, reply.Answer);
+
+                MoveDecision dismissDecision = CurrentPlayer.DismissPawn(this, req.Key);
+                if (dismissDecision.NeedsInput)
+                {
+                    Events.Enqueue(new DismissPawnInputRequestedEvent(CurrentPlayer, req.Key));
+
+                    // Mettiti in ascolto sui comandi per un comando di tipo MoveCommand e riassegna la moveDecision
+                    // dismissDecision = command...
+                }
+
+                foreach (Move m in dismissDecision.Moves)
+                {
+                    SubmitMove(m);
+                }
+            }
         }
 
         public void SubmitMove(Move move)
@@ -251,7 +371,7 @@ namespace Inkognito.Core
             if (move is null)
                 throw new ArgumentNullException(nameof(move));
             
-            Events.Enqueue(new PawnMovedEvent(CurrentPlayer, move.Pawn, move.Pawn.Position, move.To, move.MoveType));
+            Events.Enqueue(new PawnMovedEvent(CurrentPlayer, move.Pawn, move.Pawn.Position, move.To, move.MoveTypeConsumed));
 
             Board.ApplyMove(move);
         }
@@ -368,7 +488,7 @@ namespace Inkognito.Core
         {
             Console.Out.WriteLine($"{whoDeclares.Name} dichiara missione compiuta da singolo");
 
-            GameEndedEvent geev;
+            GameEndedEvent gameEndEvent;
 
             if(whoDeclares.Identity == Identity.A)
             {
@@ -389,7 +509,7 @@ namespace Inkognito.Core
                 sb.Append(" win!");
                 Console.Out.WriteLine(sb);
 
-                geev = new GameEndedEvent( GetEnemies(lonely) );
+                gameEndEvent = new GameEndedEvent( GetEnemies(lonely) );
             }
             else
             {
@@ -397,7 +517,7 @@ namespace Inkognito.Core
                 if (m.VerifyVictoryConditions(this))
                 {
                     Console.Out.WriteLine($"Mission Completed! {whoDeclares.Name} wins, fleeing successfully!");
-                    geev = new GameEndedEvent(new () { whoDeclares });
+                    gameEndEvent = new GameEndedEvent(new () { whoDeclares });
                 }
                 else
                 {
@@ -406,11 +526,11 @@ namespace Inkognito.Core
                     sb.AppendJoin(" and ", GetEnemies(lonely));
                     sb.Append(" win!");
                     Console.Out.WriteLine(sb);
-                    geev = new GameEndedEvent(GetEnemies(lonely));
+                    gameEndEvent = new GameEndedEvent(GetEnemies(lonely));
                 }
             }
             GameOver = true;
-            Events.Enqueue(geev);
+            Events.Enqueue(gameEndEvent);
         }
 
         public void DeclareMissionComplete(Player whoDeclares, Player declaredPartner)

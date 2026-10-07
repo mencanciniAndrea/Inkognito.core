@@ -162,7 +162,7 @@ namespace Inkognito.Core.Brains
 
         public void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase)
         {
-            Pawn ambassador = plan.resultingBoard.AmbassadorPawn;
+            Pawn ambassador = plan.ResultingBoard.AmbassadorPawn;
             if(gameState.CurrentPlayer.Identity == Identity.A)
             {
                 EvaluatePlanForAmbassador(plan, gameState.CurrentPlayer, phase);
@@ -176,13 +176,13 @@ namespace Inkognito.Core.Brains
         private static void EvaluateForColoredPlayer(Plan plan, Player me, Pawn ambassador, TurnPhase phase)
         {
 
-            foreach (Pawn p in plan.resultingBoard.Pawns)
+            foreach (Pawn p in plan.ResultingBoard.Pawns)
             {
                 if (p != ambassador)
                 {
                     if (p.Color == me.Color)
                     {
-                        var pawnsOnCell = plan.resultingBoard.GetPawnsOnCell(p.Position);
+                        var pawnsOnCell = plan.ResultingBoard.GetPawnsOnCell(p.Position);
                         if (pawnsOnCell.Count > 1)
                         {
                             foreach (Pawn x in pawnsOnCell)
@@ -222,7 +222,7 @@ namespace Inkognito.Core.Brains
 
         private static void EvaluatePlanForAmbassador(Plan plan, Player me, TurnPhase phase)
         {
-            var pawnsOnCell = plan.resultingBoard.GetPawnsOnCell(plan.resultingBoard.AmbassadorPawn.Position);
+            var pawnsOnCell = plan.ResultingBoard.GetPawnsOnCell(plan.ResultingBoard.AmbassadorPawn.Position);
             if (pawnsOnCell.Count > 1)
             {
                 foreach (Pawn x in pawnsOnCell)
@@ -555,7 +555,7 @@ namespace Inkognito.Core.Brains
             List<Plan> legalPlans = new();
             foreach (Plan plan in dismissionPlans)
             {
-                if(RulesEngine.IsGameBoardStateLegal(plan.resultingBoard, currentPlayer, TurnPhase.Expulsion))
+                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, TurnPhase.Expulsion))
                 {
                     legalPlans.Add(plan);
                     EvaluatePlan(plan, gameState, TurnPhase.Expulsion);

@@ -1,4 +1,5 @@
 using Inkognito.Core.Brains;
+using Inkognito.Core.Decisions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -97,6 +98,40 @@ namespace Inkognito.Core
             // TODO: implementare la macchina a stati finiti di come può evolvere l'assegnazione degli obiettivi.
             // Nel caso banale è lineare: Find Partner --> Discover Mission --> Complete Mission
             // ma si potrebbe fare in modo che durante un inganno, ci possano essere degli archi indietro
+        }
+
+        public MoveDecision DecideMoves(GameState gameState, IReadOnlyList<MoveType> availableMoves)
+        {
+            if (gameState is null)
+                throw new ArgumentNullException(nameof(gameState));
+            if (availableMoves is null)
+                throw new ArgumentNullException(nameof(availableMoves));
+            if (!ReferenceEquals(gameState.CurrentPlayer, this))
+                throw new InvalidOperationException("Può giocare soltanto il giocatore corrente della partita.");
+
+
+            if (this.Type == PlayerType.Human)
+            {
+                return new MoveDecision(new List<Move>(), true);
+            }
+
+            AvailableMoves = availableMoves;
+
+            StringBuilder sb = new();
+            sb.Append("Mosse disponibili: {");
+            sb.AppendJoin(", ", availableMoves);
+            sb.Append("}");
+            Console.Out.WriteLine($"{sb}");
+
+            // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
+            // se invece è CPU, si chiama il suo Brain
+            Plan movementsPlan = Brain.GetBestMovePlan(gameState, availableMoves, TurnPhase.Move);
+
+            sb = new();
+            sb.Append($"{Name} segue: ");
+            sb.AppendJoin(", ", movementsPlan.Moves);
+            Console.Out.WriteLine($"{sb}");
+            return new MoveDecision(movementsPlan.Moves, false);
         }
 
         public void PlayTurn(GameState gameState, IReadOnlyList<MoveType> availableMoves)
@@ -261,7 +296,37 @@ namespace Inkognito.Core
                 EndTurn();
             }
         }
+        
+        public MoveDecision DismissPawn(GameState gameState, Pawn p)
+        {
+            if(Type == PlayerType.Human)
+            {
+                return new MoveDecision(new List<Move>(), true);
+            }
 
+            Plan dismissionPlan = Brain.DismissPawn(p, gameState, this, Memory!);
+            StringBuilder sb = new();
+            sb.Append($"{Name} manda via {p}: ");
+            sb.AppendJoin(", ", dismissionPlan.Moves);
+
+            Console.Out.WriteLine(sb);
+
+            return new MoveDecision(dismissionPlan.Moves, false);
+        }
+
+        public void ManageAnswer(GameState gameState, PlayerAnswer answer)
+        {
+            Brain.ManageAnswer(this, answer, gameState);
+        }
+
+        public InformationReplyDecision AnswerTo(PlayerInfoRequest req)
+        {
+            if(Type == PlayerType.Human)
+            {
+                return new InformationReplyDecision(new PlayerAnswer(), true);
+            }
+            return new InformationReplyDecision(Brain.ReplyToRequest(this, req, Memory!, _random), false);
+        }
         public PlayerAnswer Ask(PlayerInfoRequest req)
         {
             // Devo dare una risposta... che gli dico? Cervello, aiutami tu...
@@ -320,5 +385,39 @@ namespace Inkognito.Core
             return sb.ToString();
         }
 
+        internal InformationRequestDecision WhatDoYouWantToAsk(GameState gameState, List<Pawn> pawnList)
+        {
+            if(Type == PlayerType.Human)
+            {
+                return new InformationRequestDecision(new Dictionary<Pawn, PlayerInfoRequest>(), true);
+            }
+
+            Dictionary<Pawn, PlayerInfoRequest> pawnReqDict = new ();
+
+            var sortedPawnList = Brain.SortQuerablePawnList(pawnList, Memory!);
+
+            // fase 4: se la lista di player a cui chiedere informazioni non è vuota, si chiede a ciascuno di loro le informazioni richieste del tipo richiesto
+            foreach (Pawn p in sortedPawnList)
+            {
+                PlayerColor pColorToAsk = p.Color;
+                // 2. a chi chiedo cosa? Cervello, aiutami tu...
+                if (p == gameState.AmbassadorPawn)
+                {
+                    // scegli il giocatore a cui chiedere, tra quelli disponibili (che non sia black!
+                    Player?[] availablePlayers = gameState.Players.Where(p => p != null && p.Color != PlayerColor.Black && p.Color != this.Color).ToArray();
+
+                    pColorToAsk = Brain.WhoToAskInfoBetween(availablePlayers!, _random);
+                }
+
+                var reqType = Brain.WhatToRequestTo(pColorToAsk, Memory!, _random);
+
+                // 3. ask information to the player (crea la request e mandagliela)
+                PlayerInfoRequest request = new(Color, pColorToAsk, reqType, p.Color == PlayerColor.Black);
+
+                pawnReqDict[p] = request;
+            }
+
+            return new InformationRequestDecision(pawnReqDict, false);
+        }
     }
 }
