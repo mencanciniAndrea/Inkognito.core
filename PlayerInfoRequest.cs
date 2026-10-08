@@ -25,6 +25,13 @@ namespace Inkognito.Core
             ThroughAmbassador = throughAmbassador;
         }
 
+        public override string ToString()
+        {
+            StringBuilder sb = new();
+            sb.Append($"{Sender} chiede {Type} a {Receiver}");
+            sb.Append(ThroughAmbassador ? " tramite ambasciatore" : " direttamente");
+            return sb.ToString();
+        }
 
     }
 }

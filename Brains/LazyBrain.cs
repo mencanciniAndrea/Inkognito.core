@@ -15,12 +15,14 @@ namespace Inkognito.Core.Brains
     {
         public MovePlanner Planner { get; set; } = null!;
 
+        internal Plan? CurrentPlan;
+
         public LazyBrain()
         {
             Planner = new MovePlanner();
         }
 
-        public Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase)
+        public void ElaboratePlan(GameState gameState, IEnumerable<MoveType> moveTypes, GameInternalState turnPhase)
         {
             Player me = gameState.CurrentPlayer;
             var possiblePlans = Planner.GetAllPossiblePlans(gameState.Board, moveTypes, me);
@@ -32,7 +34,7 @@ namespace Inkognito.Core.Brains
             foreach (var plan in possiblePlans)
             {
                 // verificare se il piano è legale prima di valutarlo
-                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, me, TurnPhase.Move))
+                if (RulesEngine.IsGameBoardStateLegal(gameState.Board, me, GameInternalState.DecidingMove))
                 {
                     
                     EvaluatePlan(plan, gameState, turnPhase);
@@ -48,7 +50,7 @@ namespace Inkognito.Core.Brains
                     {
                         if (visitedCells.Contains(move.To.Id))
                         {
-                            Console.Out.WriteLine($"Piano dummy. Casella già visitata: {move.To.Id}");
+                            //Console.Out.WriteLine($"Piano dummy. Casella già visitata: {move.To.Id}");
                             dummyPlan = true;
                             dummyPlans++;
                         }
@@ -79,7 +81,7 @@ namespace Inkognito.Core.Brains
             Plan[] chooseFrom = plausiblePlans.Where(p => p.Moves.Count() > 0).ToArray();
             if (chooseFrom.Length == 0)
             {
-                return plausiblePlans[0];
+                CurrentPlan = plausiblePlans[0];
             }
             else
             {
@@ -155,12 +157,13 @@ namespace Inkognito.Core.Brains
                     }
                     // TODO questo è da completare, ma per adesso vediamo se vengono scelti piani decenti
                 }
-                return result;
+                CurrentPlan = result;
             }
-                
+
+            Console.Out.WriteLine($"Piano scelto: {CurrentPlan}");
         }
 
-        public void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase)
+        public void EvaluatePlan(Plan plan, GameState gameState, GameInternalState phase)
         {
             Pawn ambassador = plan.ResultingBoard.AmbassadorPawn;
             if(gameState.CurrentPlayer.Identity == Identity.A)
@@ -173,7 +176,7 @@ namespace Inkognito.Core.Brains
             }
         }
 
-        private static void EvaluateForColoredPlayer(Plan plan, Player me, Pawn ambassador, TurnPhase phase)
+        private static void EvaluateForColoredPlayer(Plan plan, Player me, Pawn ambassador, GameInternalState phase)
         {
 
             foreach (Pawn p in plan.ResultingBoard.Pawns)
@@ -220,7 +223,7 @@ namespace Inkognito.Core.Brains
             }
         }
 
-        private static void EvaluatePlanForAmbassador(Plan plan, Player me, TurnPhase phase)
+        private static void EvaluatePlanForAmbassador(Plan plan, Player me, GameInternalState phase)
         {
             var pawnsOnCell = plan.ResultingBoard.GetPawnsOnCell(plan.ResultingBoard.AmbassadorPawn.Position);
             if (pawnsOnCell.Count > 1)
@@ -555,10 +558,10 @@ namespace Inkognito.Core.Brains
             List<Plan> legalPlans = new();
             foreach (Plan plan in dismissionPlans)
             {
-                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, TurnPhase.Expulsion))
+                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, GameInternalState.DismissingPawn))
                 {
                     legalPlans.Add(plan);
-                    EvaluatePlan(plan, gameState, TurnPhase.Expulsion);
+                    EvaluatePlan(plan, gameState, GameInternalState.DismissingPawn);
                 }
             }
             if (legalPlans.Count == 0)
@@ -731,6 +734,16 @@ namespace Inkognito.Core.Brains
                     Console.Out.WriteLine($"{brainOwner.Name} deve: {brainOwner.MissionToComplete.Description}");
                 }
             }
+            else
+            {
+                if(brainOwner.MyPartner is not null)
+                {
+                    if(brainOwner.MyPartner.Mission != MissionPart.DON_T_KNOW)
+                    {
+                        brainOwner.MissionToComplete = Mission.GetMission(brainOwner, brainOwner.MyPartner, gameState);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -780,6 +793,28 @@ namespace Inkognito.Core.Brains
                 // se sono arrivato qui, sono tutti noti, e nessuno è il mio partner. Quindi devo giocare da solo
                 memory.IMustPlayAlone = YES_OR_NO.YES;
             }
+        }
+
+        public bool IsFollowingAPlan()
+        {
+            return CurrentPlan is not null;
+        }
+
+        public List<Move> GetNextMove()
+        {
+            if (CurrentPlan is null || CurrentPlan.Moves.Count == 0)
+                return new();
+            else
+            {
+                Move? m = CurrentPlan.GetNextMove();
+                if (m is not null) return new() { m };
+            }
+            return new() { };
+        }
+
+        public void CleanCurrentMovePlan()
+        {
+            CurrentPlan = null;
         }
     }
 }

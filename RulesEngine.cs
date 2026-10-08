@@ -221,14 +221,14 @@ namespace Inkognito.Core
         /// <param name="currentPlayer"></param>
         /// <param name="turnPhase"></param>
         /// <returns></returns>
-        public static bool IsGameBoardStateLegal(Board gameBoard, Player currentPlayer, TurnPhase turnPhase)
+        public static bool IsGameBoardStateLegal(Board gameBoard, Player currentPlayer, GameInternalState turnPhase)
         {
             switch (turnPhase)
             {
-                case TurnPhase.Move:
-                case TurnPhase.InfoGathering:
+                case GameInternalState.DecidingMove:
+                case GameInternalState.DecidingQuery:
                         return verifyBoardStateAtMovePhase(gameBoard, currentPlayer);
-                case TurnPhase.Expulsion:
+                case GameInternalState.DismissingPawn:
                     return verifyBoardStateAtExpulsionState(gameBoard, currentPlayer);
             }
             return true;

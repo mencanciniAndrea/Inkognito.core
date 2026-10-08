@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Inkognito.Core
 {
@@ -20,18 +21,18 @@ namespace Inkognito.Core
         }
 
         /// <summary>Estrae tre voci senza reinserimento; a ogni chiamata riparte dalle dieci voci.</summary>
-        public IReadOnlyList<MoveType> DrawMoves()
+        public List<MoveIndication> DrawMoves()
         {
             var remaining = GetAvailableMoves();
-            var moves = new MoveType[3];
+            var moves = new MoveIndication[3];
             for (int i = 0; i < moves.Length; i++)
             {
                 int index = random.Next(remaining.Count);
-                moves[i] = remaining[index];
+                moves[i] = new (remaining[index]);
                 remaining.RemoveAt(index);
             }
 
-            return Array.AsReadOnly(moves);
+            return moves.ToList();
         }
 
         private List<MoveType> GetAvailableMoves()

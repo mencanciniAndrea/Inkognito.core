@@ -1,6 +1,8 @@
 using Inkognito.Core.Commands;
 using Inkognito.Core.Decisions;
 using Inkognito.Core.Events;
+using Stateless;
+using Stateless.Graph;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,6 +23,9 @@ namespace Inkognito.Core
 
         private Task? _gameTask;
 
+        public List<MoveIndication> AvailableMoves { get; private set; } = new();
+
+        public IReadOnlyList<Move> CurrentPlayersMoves { get; set; }
 
         public readonly ProphecyPhantom prophecyPhantom;
         public Board Board { get; }
@@ -47,6 +52,13 @@ namespace Inkognito.Core
         public int ActivePlayers { get; private set; }
 
         public AmbassadorReport? AmbassadorReport { get; private set; }
+        public Pawn? PawnToAsk { get; private set; }
+        public InformationReplyDecision? CurrentAnswer { get; private set; }
+        public bool MissionAccepted { get; private set; }
+
+        private StateMachine<GameInternalState, StateTrigger> InternalStateMachine;
+        private InformationRequestDecision? CurrentPlayerQuery;
+        private Player? DeclaredPartner;
 
         public GameState(params string?[] playerNames)
             : this(playerNames, GenerateSeed())
@@ -103,7 +115,7 @@ namespace Inkognito.Core
             AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
-            List<Pawn> pawns = new () { };
+            List<Pawn> pawns = new() { };
 
             var players = new Player?[playerNames.Length];
             CreatePlayers(playerNames, random, identities, disguises, missions, colors, pawns, players);
@@ -122,14 +134,19 @@ namespace Inkognito.Core
             prophecyPhantom = new ProphecyPhantom(random);
 
             // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.
-            
+
             var occupiedSlots = Enumerable.Range(0, Players.Count)
                 .Where(index => Players[index] is not null).ToArray();
 
             CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
-            // TODO: mandare la carta PLAYER_START al giocatore che inizia il turno
 
-            
+            //-----------------------------------------------------------------
+            //
+            // SETUP INTERNAL STATE MACHINE
+            //
+            //-----------------------------------------------------------------
+
+            InternalStateMachine = SetupStateMachine();
 
             _gameTask = Task.Run(async () =>
             {
@@ -166,12 +183,288 @@ namespace Inkognito.Core
             });
         }
 
+        public void RequestMoveInput()
+        {
+            Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, AvailableMoves.Where(m => !m.IsConsumed && m.Move != MoveType.None).Select(m => m.Move).ToList()));
+        }
+
+        /// <summary>
+        /// Definisce la state machine dello stato interno
+        /// </summary>
+        private StateMachine<GameInternalState, StateTrigger> SetupStateMachine()
+        {
+            // creazione
+            var m = new StateMachine<GameInternalState, StateTrigger>(GameInternalState.SettingUp);
+
+            // stato SettingUp - il gioco non è ancora ufficialmente partito
+            m.Configure(GameInternalState.SettingUp)
+                .Permit(StateTrigger.StartGame, GameInternalState.Playing);
+
+            // stato Playing - si parte. Da adesso in poi, fino al gameover, si rimane in stato Playing
+            m.Configure(GameInternalState.Playing)
+                .InitialTransition(GameInternalState.TurnStarted)
+                .OnEntry(t => OnGameStarted())
+                .Permit(StateTrigger.EndGame, GameInternalState.GameOver);
+
+            // stato TurnStarted - sottostato di Playing (da adesso sono tutti sottostati di playing)
+            // si estraggono le mosse disponibili e si passa direttamente a DecidingMove
+            m.Configure(GameInternalState.TurnStarted)
+                .SubstateOf(GameInternalState.Playing)
+                .OnEntry(a => OnTurnStarted())
+                .Permit(StateTrigger.DecideMoves, GameInternalState.DecidingMove);
+
+            // stato DecidingMove - Qui il Player decide come muovere i suoi pedoni. Può dare le mosse tutte insieme, oppure una alla volta. Oppure non fare niente.
+            m.Configure(GameInternalState.DecidingMove)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.EndTurn, GameInternalState.EndingTurn)
+                .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .Permit(StateTrigger.ApplyMove, GameInternalState.ApplyingMoves)
+                .OnEntry(a => OnDecideMove());
+
+            // stato Moved - onentry si applicano le mosse dichiarate in CurrentPlayersMoves
+            m.Configure(GameInternalState.ApplyingMoves)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.EndTurn, GameInternalState.EndingTurn)
+                .Permit(StateTrigger.DecideQuery, GameInternalState.DecidingQuery)
+                .PermitIf(StateTrigger.DecideMoves, GameInternalState.DecidingMove, () => AvailableMoves.Count(m => !m.IsConsumed && m.Move != MoveType.None) > 0)
+                .OnEntry(a => OnApplyMoves());
+
+            // Stato Deciding Query - qui si decide cosa chiedere al tizio appena incontrato
+            m.Configure(GameInternalState.DecidingQuery)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.EndTurn, GameInternalState.EndingTurn)
+                .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .Permit(StateTrigger.Query, GameInternalState.AwaitingAnswer)
+                .OnEntry(_ => OnDecidingQueryEntry());
+
+            m.Configure(GameInternalState.AwaitingAnswer)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.AnswerDelivered, GameInternalState.ElaboratingAnswer)
+                .OnEntry(_ => NotifyPlayerToReply());
+
+            m.Configure(GameInternalState.ElaboratingAnswer)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.AnswerNoted, GameInternalState.DismissingPawn)
+                .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .OnEntry(_ => ElaborateAnswer());
+
+            m.Configure(GameInternalState.DismissingPawn)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.DismissPawn, GameInternalState.PawnDismissed)
+                .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .OnEntry(_ => OnDismissPawnEntry());
+
+            m.Configure(GameInternalState.PawnDismissed)
+                .SubstateOf(GameInternalState.Playing)
+                .PermitIf(StateTrigger.DecideMoves, GameInternalState.DecidingMove, () => AvailableMoves.Count(m => !m.IsConsumed && m.Move != MoveType.None) > 0)
+                .Permit(StateTrigger.EndTurn, GameInternalState.EndingTurn)
+                .OnEntry(_ => OnPawnDismissedEntry());
+
+            m.Configure(GameInternalState.DeclaringMissionComplete)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.AskMissionPartner, GameInternalState.AskingMissionToPartner)
+                .Permit(StateTrigger.MissionCompletedAlone, GameInternalState.EvaluatingMission)
+                .OnEntry(_ => OnDeclaringMissionCompleteEntry());
+
+            m.Configure(GameInternalState.AskingMissionToPartner)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.ReplyToMissionParnter, GameInternalState.EvaluatingMission)
+                .OnEntry(_ => OnAskingMissionToPartnerEntry());
+
+            m.Configure(GameInternalState.EvaluatingMission)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.EndGame, GameInternalState.GameOver)
+                .OnEntry(_ => EvaluateMissionCompleted());
+
+            m.Configure(GameInternalState.EndingTurn)
+                .SubstateOf(GameInternalState.Playing)
+                .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .Permit(StateTrigger.EndTurn, GameInternalState.TurnStarted)
+                .OnEntry(a => AdvanceTurn());
+
+            m.Configure(GameInternalState.GameOver)
+                .OnEntry(_ => GameOver = true);
+
+            //TODO valutare se mettere un reset per rigiocare da capo, ma non credo serva qui...
+
+            string graph = MermaidGraph.Format(m.GetInfo());
+            File.AppendAllText("InternalStateMachine.mmd", graph);
+
+            return m;
+        }
+
+        private void OnDecideMove()
+        {
+            List<MoveType> availableMoves = AvailableMoves.Where(m => !m.IsConsumed && m.Move != MoveType.None).Select(m => m.Move).ToList();
+            MoveDecision d = CurrentPlayer.DecideMoves(this, availableMoves);
+            if (d.NeedsInput)
+            {
+                Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, availableMoves));
+            }
+            else if(d.Moves.Count > 0)
+            {
+                CurrentPlayersMoves = d.Moves;
+                InternalStateMachine.Fire(StateTrigger.ApplyMove);
+            }
+            else
+            {
+                InternalStateMachine.Fire(StateTrigger.EndTurn);
+            }
+        }
+
+        private void OnGameStarted()
+        {
+            Events.Enqueue(new GameStartedEvent());
+        }
+
+        private void EvaluateMissionCompleted()
+        {
+            //TODO Implementare tutti i casi di valutazione della missione
+            InternalStateMachine.Fire(StateTrigger.EndGame);
+        }
+
+        private void OnAskingMissionToPartnerEntry()
+        {
+            MissionAccepted = DeclaredPartner!.AcceptMissionCompleteRequest(this);
+
+            InternalStateMachine.Fire(StateTrigger.ReplyToMissionParnter);
+        }
+
+        private void OnDeclaringMissionCompleteEntry()
+        {
+            DeclaredPartner = CurrentPlayer.DeclareMissionPartner();
+            if(DeclaredPartner is null)
+            {
+                InternalStateMachine.Fire(StateTrigger.MissionCompletedAlone);
+            }
+            else
+            {
+                InternalStateMachine.Fire(StateTrigger.AskMissionPartner);
+            }
+        }
+
+        private void OnPawnDismissedEntry()
+        {
+            if (CurrentPlayer.WantToDeclareMissionCompleted(this))
+            {
+                InternalStateMachine.Fire(StateTrigger.DeclareMissionCompleted);
+            }
+            else
+            {
+                if (AvailableMoves.Count(m => !m.IsConsumed && m.Move != MoveType.None) > 0)
+                {
+                    InternalStateMachine.Fire(StateTrigger.DecideMoves);
+                }
+                else
+                {
+                    InternalStateMachine.Fire(StateTrigger.EndTurn);
+                }
+            }
+        }
+
+        private void OnDismissPawnEntry()
+        {
+            MoveDecision howToDismissPawn = CurrentPlayer.DismissPawn(this, PawnToAsk!);
+            foreach(Move m in howToDismissPawn.Moves)
+            {
+                SubmitMove(m);
+            }
+            if (CurrentPlayer.WantToDeclareMissionCompleted(this))
+            {
+                InternalStateMachine.Fire(StateTrigger.DeclareMissionCompleted);
+            }
+            else
+            {
+                InternalStateMachine.Fire(StateTrigger.DismissPawn);
+            }
+        }
+
+        private void ElaborateAnswer()
+        {
+            CurrentPlayer.ManageAnswer(this, CurrentAnswer!.Answer);
+            if (CurrentPlayer.WantToDeclareMissionCompleted(this))
+            {
+                InternalStateMachine.Fire(StateTrigger.DeclareMissionCompleted);
+            }
+            else
+            {
+                InternalStateMachine.Fire(StateTrigger.AnswerNoted);
+            }
+        }
+
+        private void NotifyPlayerToReply()
+        {
+            CurrentAnswer = null;
+            foreach (var info in CurrentPlayerQuery!.InfoToAsk)
+            {
+                var otherPlayer = PlayersByColor[info.Key.Color];
+                CurrentAnswer = otherPlayer.AnswerTo(info.Value);
+
+                Console.Out.WriteLine($"{CurrentAnswer.Answer}");
+            }
+            if(CurrentAnswer is not null)
+            {
+                InternalStateMachine.Fire(StateTrigger.AnswerDelivered);
+            }
+        }
+
+        private void OnDecidingQueryEntry()
+        {
+            CurrentPlayerQuery = CurrentPlayer.WhatDoYouWantToAsk(this, new() { PawnToAsk! });
+            Console.Out.WriteLine($"{CurrentPlayerQuery.InfoToAsk[PawnToAsk!]}");
+            InternalStateMachine.Fire(StateTrigger.Query);
+        }
+
+        private void OnApplyMoves()
+        {
+            foreach(Move m in CurrentPlayersMoves)
+            {
+                SubmitMove(m);
+                AvailableMoves.FindLast(p => p.Move == m.MoveTypeConsumed).IsConsumed = true;
+            }
+
+            //Ora: se sulla board ci sono pupazzi sulla stessa casella, vai in query.
+            // Altrimenti, se ci sono ancora mosse disponibili, vai di nuovo in decidemoves.
+            // Altrimenti vai a end turn
+
+            // cicla solo sui pawn del player corrente
+            PawnToAsk = null;
+            foreach(Pawn p in CurrentPlayer.Pawns){
+                var availablePawns = Board.GetPawnsOnCell(p.Position).Where(otherPawn => otherPawn.Color != p.Color).ToList();
+                if(availablePawns.Count == 1)
+                {
+                    PawnToAsk = availablePawns.First();
+                    break;
+                }
+            }
+            if(PawnToAsk is not null)
+            {
+                InternalStateMachine.Fire(StateTrigger.DecideQuery);
+            }
+            else if(AvailableMoves.Count(m => !m.IsConsumed && m.Move != MoveType.None) > 0)
+            {
+                InternalStateMachine.Fire(StateTrigger.DecideMoves);
+            }
+            else
+            {
+                InternalStateMachine.Fire(StateTrigger.EndTurn);
+            }
+        }
+
+        private void OnTurnStarted()
+        {
+            Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
+            DrawMoves();
+            CurrentPlayer.PrepareForTurn();
+            InternalStateMachine.Fire(StateTrigger.DecideMoves);
+        }
+
         public void StartGame()
         {
-            if (_gameTask is null)
-                throw new InvalidOperationException("Il gioco non è stato inizializzato correttamente.");
-            // Invia l'evento di inizio turno al giocatore corrente
-            Events.Enqueue(new GameStartedEvent());
+            InternalStateMachine.Fire(StateTrigger.StartGame);
+
+            /*
+
             while(!GameOver)
             {
                 //TODO sostituire con PlayTurn() una volta che ci sono tutti i comandi e gli eventi a disposizione
@@ -179,6 +472,8 @@ namespace Inkognito.Core
                 
                 AdvanceTurn();
             }
+
+            */
         }
 
         public void PlayTurnOldStyle()
@@ -195,13 +490,24 @@ namespace Inkognito.Core
             // ESTRAZIONE MOSSE DISPONIBILI
             //
             //-----------------------------------------------------------------
+            
+            DrawMoves();
+
+            List<MoveType> available = AvailableMoves
+                .Where(m => !m.IsConsumed)
+                .Select(m => m.Move)
+                .ToList();
+
+            CurrentPlayer.PlayTurn(this, available);
+        }
+
+        private void DrawMoves()
+        {
             bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
-            IReadOnlyList<MoveType> AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
-                prophecyPhantom.DrawMoves();
+            AvailableMoves = IAmAmbassador ? new List<MoveIndication> { new(MoveType.Ambassador), new(MoveType.Ambassador) } :
+                            prophecyPhantom.DrawMoves();
 
             Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
-
-            CurrentPlayer.PlayTurn(this, AvailableMoves);
         }
 
         public void DepositReport(AmbassadorReport report)
@@ -277,7 +583,7 @@ namespace Inkognito.Core
             //
             //-----------------------------------------------------------------
             bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
-            IReadOnlyList<MoveType> AvailableMoves = IAmAmbassador ? new List<MoveType> { MoveType.Ambassador, MoveType.Ambassador } :
+            AvailableMoves = IAmAmbassador ? new List<MoveIndication> { new(MoveType.Ambassador), new(MoveType.Ambassador)} :
                 prophecyPhantom.DrawMoves();
 
             Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
@@ -287,10 +593,12 @@ namespace Inkognito.Core
             // DECISIONE MOVIMENTI
             //
             //-----------------------------------------------------------------
-            MoveDecision moveDecision = CurrentPlayer.DecideMoves(this, AvailableMoves);
+            var moves = AvailableMoves.Where(m => !m.IsConsumed).Select(m => m.Move).ToList();
+            /*
+            MoveDecision moveDecision = CurrentPlayer.DecideMoves(this, moves);
             if (moveDecision.NeedsInput)
             {
-                Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, AvailableMoves));
+                Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, moves));
 
                 // Mettiti in ascolto sui comandi per un comando di tipo MoveCommand e riassegna la moveDecision
                 // moveDecision = command...
@@ -300,7 +608,7 @@ namespace Inkognito.Core
             {
                 SubmitMove(m);
             }
-
+            */
 
             //-----------------------------------------------------------------
             //
@@ -411,12 +719,20 @@ namespace Inkognito.Core
         /// <summary>Avanza al prossimo posto occupato; non verifica le condizioni di fine turno.</summary>
         public void AdvanceTurn()
         {
+            if (CurrentPlayer.WantToDeclareMissionCompleted(this))
+            {
+                InternalStateMachine.Fire(StateTrigger.DeclareMissionCompleted);
+                return;
+            }
+
+            Events.Enqueue(new TurnEndedEvent(CurrentPlayer, TurnNumber));
             do
             {
                 CurrentPlayerIndex = (CurrentPlayerIndex + 1) % Players.Count;
             }
             while (Players[CurrentPlayerIndex] is null);
             TurnNumber++;
+            InternalStateMachine.Fire(StateTrigger.EndTurn);
         }
 
         private Pawn[] CreatePawns(PlayerColor color, Random random)

@@ -7,6 +7,8 @@ namespace Inkognito.Core
 {
     public class Plan
     {
+        private int currentMoveIndex;
+
         public HashSet<PlanTraits> Traits { get; private set; }
         public List<Move> Moves { get; private set; }
 
@@ -17,6 +19,7 @@ namespace Inkognito.Core
             Traits = new HashSet<PlanTraits>();
             Moves = new List<Move>();
             ResultingBoard = originalBoard.Clone();
+            currentMoveIndex = 0;
         }
 
         public Plan Clone()
@@ -63,6 +66,17 @@ namespace Inkognito.Core
             sb.AppendLine("Brings to: ");
             sb.AppendLine(ResultingBoard.ToString());
             return sb.ToString();
+        }
+
+        internal Move? GetNextMove()
+        {
+            if(currentMoveIndex == Moves.Count)
+            {
+                return null;
+            }
+            Move result = Moves[currentMoveIndex];
+            currentMoveIndex++;
+            return result;
         }
     }
 }

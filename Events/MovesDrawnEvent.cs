@@ -7,12 +7,12 @@ namespace Inkognito.Core.Events
     public class MovesDrawnEvent : IGameEvent
     {
         public Player CurrentPlayer { get; }
-        public IReadOnlyList<MoveType> Moves { get; }
+        public IReadOnlyList<MoveIndication> Moves { get; }
 
-        public MovesDrawnEvent(Player currentPlayer, IReadOnlyList<MoveType> moves)
+        public MovesDrawnEvent(Player currentPlayer, IReadOnlyList<MoveIndication> moves)
         {
             CurrentPlayer = currentPlayer;
-            List<MoveType> movesList = new(moves);
+            List<MoveIndication> movesList = new(moves);
             Moves = movesList;
         }
 

@@ -197,14 +197,16 @@ namespace Inkognito.Core
             List<Plan> result = new ();
             foreach (var plan in candidatePlans)
             {
-                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, TurnPhase.Move))
+                if(RulesEngine.IsGameBoardStateLegal(plan.ResultingBoard, currentPlayer, GameInternalState.DecidingMove))
                 {
                     result.Add(plan);
                 }
+                /*
                 else
                 {
                     Console.Out.WriteLine($"DEBUG: Plan not legal: {plan}");
                 }
+                */
             }
 
             return candidatePlans;

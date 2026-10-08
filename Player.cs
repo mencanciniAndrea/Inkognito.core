@@ -38,7 +38,16 @@ namespace Inkognito.Core
 
         public Mission? MissionToComplete { get; set; }
 
-        public Player? MyPartner { get; set; }
+        private Player? _myPartner;
+
+        public Player? MyPartner { get => _myPartner;
+            set
+            {
+                _myPartner = value;
+                if(value != null)
+                    Console.Out.WriteLine($"{Name} - {Color} ha come partner {_myPartner!.Name} {_myPartner!.Color}");
+            }
+        }
         //----------------------------------------------------------------------
         //
         // Intelligence Section
@@ -112,8 +121,18 @@ namespace Inkognito.Core
 
             if (this.Type == PlayerType.Human)
             {
+                gameState.RequestMoveInput();
                 return new MoveDecision(new List<Move>(), true);
             }
+
+            //TODO: se avevi un piano in sospeso, restituisci la prossima lista di mosse. Ma lo devi chiedere al Brain, perché è lui che pensa
+            //
+            // if(Brain.IsExecutingPlan())
+            // {
+            //     return Brain.NextMove()
+            // }
+            // else ...
+            //
 
             AvailableMoves = availableMoves;
 
@@ -125,13 +144,23 @@ namespace Inkognito.Core
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
-            Plan movementsPlan = Brain.GetBestMovePlan(gameState, availableMoves, TurnPhase.Move);
+            List<Move> moves;
+            if (Brain.IsFollowingAPlan())
+            {
+                moves = Brain.GetNextMove();
+            }
+            else
+            {
+                Brain.ElaboratePlan(gameState, availableMoves, GameInternalState.DecidingMove);
+                moves = Brain.GetNextMove();
+            }
 
             sb = new();
-            sb.Append($"{Name} segue: ");
-            sb.AppendJoin(", ", movementsPlan.Moves);
+            sb.Append($"{Name} esegue: ");
+            sb.AppendJoin(", ", moves);
             Console.Out.WriteLine($"{sb}");
-            return new MoveDecision(movementsPlan.Moves, false);
+            return new MoveDecision(moves, false);
+            
         }
 
         public void PlayTurn(GameState gameState, IReadOnlyList<MoveType> availableMoves)
@@ -153,8 +182,8 @@ namespace Inkognito.Core
 
             // fase 2: scegliere le mosse disponibili. Qui se il giocatore è umano bisogna trovare il modo di recuperare l'input
             // se invece è CPU, si chiama il suo Brain
-            Plan movementsPlan = Brain.GetBestMovePlan(gameState, availableMoves, TurnPhase.Move);
-
+            //Plan movementsPlan = Brain.ElaboratePlan(gameState, availableMoves, GameInternalState.DecidingMove);
+            /*
             sb = new();
             sb.Append($"{Name} segue: ");
             sb.AppendJoin(", ", movementsPlan.Moves);
@@ -163,6 +192,7 @@ namespace Inkognito.Core
             {
                 gameState.SubmitMove(move);
             }
+            */
 
             // Fase 4.5: decidi se dichiarare la missione compiuta (ora sai qualcosa in più di prima, magari devi andare con la tua pedina su chi hai appena interrogato)
             if (Brain.ShouldDeclareMissionCompleted(this, gameState))
@@ -285,7 +315,7 @@ namespace Inkognito.Core
 
             if (!gameState.GameOver)
             {
-                if (!RulesEngine.IsGameBoardStateLegal(gameState.Board, this, TurnPhase.Expulsion))
+                if (!RulesEngine.IsGameBoardStateLegal(gameState.Board, this, GameInternalState.DismissingPawn))
                 {
                     throw new ArgumentException($"Errore! stato del gioco non legale! {gameState.Board}");
                 }
@@ -336,7 +366,7 @@ namespace Inkognito.Core
         /// <summary>
         /// Da usare quando decidi di dichiarare missione compiuta
         /// </summary>
-        public void DeclareMissionCompleted(GameState g)
+        public void DeclareMissionCompleted(GameState g) 
         {
             if(this.Identity == Identity.A)
             {
@@ -418,6 +448,28 @@ namespace Inkognito.Core
             }
 
             return new InformationRequestDecision(pawnReqDict, false);
+        }
+
+        internal void PrepareForTurn()
+        {
+            Brain.CleanCurrentMovePlan();
+        }
+
+        internal bool WantToDeclareMissionCompleted(GameState gameState)
+        {
+            return Brain.ShouldDeclareMissionCompleted(this, gameState);
+        }
+
+        internal Player? DeclareMissionPartner()
+        {
+            // Questa ha bisogno di input dall'esterno
+            return MyPartner;
+        }
+
+        internal bool AcceptMissionCompleteRequest(GameState gameState)
+        {
+            //TODO questa ha bisogno di input dall'esterno
+            return ReferenceEquals(MyPartner, gameState.CurrentPlayer);
         }
     }
 }

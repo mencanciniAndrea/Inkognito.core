@@ -4,7 +4,7 @@ namespace Inkognito.Core
 {
     public sealed class Cell
     {
-        private readonly List<Edge> edges = new List<Edge>();
+        private readonly List<Edge> edges = new ();
 
         public int Id { get; }
         public IReadOnlyList<Edge> Edges { get; }

@@ -16,6 +16,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <EmbeddedResource Include="board.yaml" LogicalName="Inkognito.Core.board.yaml" />
+	<PackageReference Include="Stateless" Version="5.20.1" />
   </ItemGroup>
+
 
 </Project>

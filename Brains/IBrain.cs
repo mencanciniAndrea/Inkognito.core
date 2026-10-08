@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Inkognito.Core.Decisions;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ namespace Inkognito.Core.Brains
 {
     public interface IBrain
     {
-        Plan GetBestMovePlan(GameState gameState, IEnumerable<MoveType> moveTypes, TurnPhase turnPhase);
+        void ElaboratePlan(GameState gameState, IEnumerable<MoveType> moveTypes, GameInternalState turnPhase);
 
         Plan DismissPawn(Pawn p, GameState gameState, Player currentPlayer, PlayerMemory memory);
 
@@ -39,7 +40,10 @@ namespace Inkognito.Core.Brains
 
         bool ShouldDeclareMissionCompleted(Player me, GameState gameState);
 
-        void EvaluatePlan(Plan plan, GameState gameState, TurnPhase phase);
+        void EvaluatePlan(Plan plan, GameState gameState, GameInternalState phase);
 
+        bool IsFollowingAPlan();
+        List<Move> GetNextMove();
+        void CleanCurrentMovePlan();
     }
 }
