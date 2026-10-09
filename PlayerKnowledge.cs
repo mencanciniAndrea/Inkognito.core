@@ -12,7 +12,7 @@ namespace Inkognito.Core
     {
         public PlayerColor About { get; }
 
-        List<PlayerAnswer> AnswersReceived { get; }
+        public List<PlayerAnswer> AnswersReceived { get; private set; }
 
         public List<PlayerAnswer> AnswersGiven { get; }
 

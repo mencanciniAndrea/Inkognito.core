@@ -307,5 +307,23 @@ namespace Inkognito.Core
             //TODO questa ha bisogno di input dall'esterno
             return ReferenceEquals(MyPartner, gameState.CurrentPlayer);
         }
+
+        internal bool WantAnotherReply(GameState gameState, PlayerAnswer answer)
+        {
+            // se sono già due volte che me la rimanda... basta.
+            if (answer!.Request!.RetryTimes == 2) return false;
+
+            var pk = Memory!.GetPlayerKnowledge(answer.Request!.Receiver);
+            bool alreadyReceived = false;
+            foreach(PlayerAnswer pa in pk!.AnswersReceived)
+            {
+                if(answer.Answers.All(ans => pa.Answers.Contains(ans)))
+                {
+                    alreadyReceived = true;
+                    break;
+                }
+            }
+            return alreadyReceived;
+        }
     }
 }

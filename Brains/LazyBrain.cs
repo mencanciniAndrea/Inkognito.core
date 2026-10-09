@@ -288,6 +288,7 @@ namespace Inkognito.Core.Brains
             }
 
             result.Request = request;
+
             pk.AddAnswerGiven(result);
 
             return result;
@@ -312,6 +313,14 @@ namespace Inkognito.Core.Brains
 
             // Tutte le risposte disponibili:
             List<PlayerAnswer> risposteDisponibili = GetPossibleAnswers(request.Type, me, pk, random);
+
+            if (request.RetryTimes == 2)
+            {
+                // sei andato in penalità: hai dato la stessa risposta più di una volta
+                List<InkognitoCard> answer = request.Type == RequestType.IDENTITY ? new() { new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity) } :
+                    new() { new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise) };
+                return new() { Answers = answer, Request = request };
+            }
 
             // Scegli una risposta a caso tra quelle disponibili. Ce ne sta almeno una.
             result = risposteDisponibili[random.Next(risposteDisponibili.Count())];
@@ -396,6 +405,14 @@ namespace Inkognito.Core.Brains
 
             //prendi la lista delle risposte disponibili
             List<PlayerAnswer> availableAnswers = request.Type == RequestType.IDENTITY ? pk.AnswersToIdentityToGive : pk.AnswersToDisguiseToGive;
+
+            if(request.RetryTimes == 2)
+            {
+                // sei andato in penalità: hai dato la stessa risposta più di una volta
+                List<InkognitoCard> answer = request.Type == RequestType.IDENTITY ? new() { new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.IDENTITY, (int)me.Identity) } :
+                    new() { new(InkognitoCardVisibility.PUBLIC, InkognitoCardType.DISGUISE, (int)me.Disguise) };
+                return new() { Answers = answer, Request = request };
+            }
 
             if(availableAnswers.Count == 0)
             {

@@ -248,6 +248,7 @@ namespace Inkognito.Core
                 .SubstateOf(GameInternalState.Playing)
                 .Permit(StateTrigger.AnswerNoted, GameInternalState.DismissingPawn)
                 .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
+                .Permit(StateTrigger.ReplyAgain, GameInternalState.AwaitingAnswer) // questa serve quando ti hanno dato una risposta già ricevuta
                 .OnEntry(_ => ElaborateAnswer());
 
             m.Configure(GameInternalState.DismissingPawn)
@@ -381,6 +382,11 @@ namespace Inkognito.Core
 
         private void ElaborateAnswer()
         {
+            if(CurrentPlayer.WantAnotherReply(this, CurrentAnswer!.Answer))
+            {
+                CurrentPlayerQuery!.InfoToAsk[PawnToAsk!].RetryTimes++;
+                InternalStateMachine.Fire(StateTrigger.ReplyAgain);
+            }
             CurrentPlayer.ManageAnswer(this, CurrentAnswer!.Answer);
             if (CurrentPlayer.WantToDeclareMissionCompleted(this))
             {

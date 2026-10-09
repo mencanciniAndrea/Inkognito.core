@@ -20,6 +20,7 @@ namespace Inkognito.Core
         AskMissionPartner,
         MissionCompletedAlone,
         ReplyToMissionParnter,
-        EndGame
+        EndGame,
+        ReplyAgain
     }
 }
