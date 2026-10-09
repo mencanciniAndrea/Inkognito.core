@@ -18,6 +18,8 @@ namespace Inkognito.Core
     public sealed class GameState
     {
 
+        public const int MAX_TURNS = 2000;
+
         public ConcurrentQueue<IGameCommand> Commands { get; } = new();
         public ConcurrentQueue<IGameEvent> Events { get; } = new();
 
@@ -280,15 +282,13 @@ namespace Inkognito.Core
                 .SubstateOf(GameInternalState.Playing)
                 .Permit(StateTrigger.DeclareMissionCompleted, GameInternalState.DeclaringMissionComplete)
                 .Permit(StateTrigger.EndTurn, GameInternalState.TurnStarted)
+                .Permit(StateTrigger.EndGame, GameInternalState.GameOver) // questa in teoria non ci dovrebbe essere, la metto per mettere un cap al numero di turni
                 .OnEntry(a => AdvanceTurn());
 
             m.Configure(GameInternalState.GameOver)
                 .OnEntry(_ => GameOver = true);
 
             //TODO valutare se mettere un reset per rigiocare da capo, ma non credo serva qui...
-
-            string graph = MermaidGraph.Format(m.GetInfo());
-            File.AppendAllText("InternalStateMachine.mmd", graph);
 
             return m;
         }
@@ -476,31 +476,6 @@ namespace Inkognito.Core
             */
         }
 
-        public void PlayTurnOldStyle()
-        {
-            //-----------------------------------------------------------------
-            //
-            // INIZIO TURNO
-            //
-            //-----------------------------------------------------------------
-            Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
-
-            //-----------------------------------------------------------------
-            //
-            // ESTRAZIONE MOSSE DISPONIBILI
-            //
-            //-----------------------------------------------------------------
-            
-            DrawMoves();
-
-            List<MoveType> available = AvailableMoves
-                .Where(m => !m.IsConsumed)
-                .Select(m => m.Move)
-                .ToList();
-
-            CurrentPlayer.PlayTurn(this, available);
-        }
-
         private void DrawMoves()
         {
             bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
@@ -567,113 +542,6 @@ namespace Inkognito.Core
             return PlayersByColor.TryGetValue(color, out var player) ? player : null;
         }
 
-        /// <summary>Esegue un singolo turno e passa al giocatore successivo.</summary>
-        public void PlayTurn()
-        {
-            //-----------------------------------------------------------------
-            //
-            // INIZIO TURNO
-            //
-            //-----------------------------------------------------------------
-            Events.Enqueue(new TurnStartedEvent(CurrentPlayer, TurnNumber));
-
-            //-----------------------------------------------------------------
-            //
-            // ESTRAZIONE MOSSE DISPONIBILI
-            //
-            //-----------------------------------------------------------------
-            bool IAmAmbassador = CurrentPlayer.Identity == Identity.A;
-            AvailableMoves = IAmAmbassador ? new List<MoveIndication> { new(MoveType.Ambassador), new(MoveType.Ambassador)} :
-                prophecyPhantom.DrawMoves();
-
-            Events.Enqueue(new MovesDrawnEvent(CurrentPlayer, AvailableMoves));
-
-            //-----------------------------------------------------------------
-            //
-            // DECISIONE MOVIMENTI
-            //
-            //-----------------------------------------------------------------
-            var moves = AvailableMoves.Where(m => !m.IsConsumed).Select(m => m.Move).ToList();
-            /*
-            MoveDecision moveDecision = CurrentPlayer.DecideMoves(this, moves);
-            if (moveDecision.NeedsInput)
-            {
-                Events.Enqueue(new MoveInputRequestedEvent(CurrentPlayer, moves));
-
-                // Mettiti in ascolto sui comandi per un comando di tipo MoveCommand e riassegna la moveDecision
-                // moveDecision = command...
-            }
-
-            foreach(Move m in moveDecision.Moves)
-            {
-                SubmitMove(m);
-            }
-            */
-
-            //-----------------------------------------------------------------
-            //
-            // DECISIONE INFORMAZIONI DA CHIEDERE
-            //
-            //----------------------------------------------------------------- 
-            List<Pawn> pawnList = new();
-            foreach (var pawn in CurrentPlayer.Pawns)
-            {
-                Cell currentCell = pawn.Position;
-                var pawns = Board.GetPawnsOnCell(currentCell).Where(pawn => pawn.Color != CurrentPlayer.Color);
-                // aggiungi tutti i pedoni sulla cella, filtrando i pedoni del current player 
-                pawnList.AddRange(pawns.ToList());
-            }
-
-            InformationRequestDecision informationToAsk = CurrentPlayer.WhatDoYouWantToAsk(this, pawnList);
-            if (informationToAsk.NeedsInput)
-            {
-                Events.Enqueue(new InfoRequestInputNeededEvent(CurrentPlayer, pawnList));
-                // wait for command: ask these things to these pawns...
-
-                // informationToAsk = await command...
-            }
-
-            //-----------------------------------------------------------------
-            //
-            // DISPATCH DELLE RICHIESTE
-            //
-            //-----------------------------------------------------------------
-            foreach (var req in informationToAsk.InfoToAsk)
-            {
-                Player recipient = PlayersByColor[req.Value.Receiver];
-                InformationReplyDecision reply = recipient.AnswerTo(req.Value);
-                if (reply.NeedsInput)
-                {
-                    Events.Enqueue(new ReplyToInfoRequestInputNeededEvent(req.Value));
-                    // wait for command: reply with these cards to req
-
-                    // reply = await command...
-                }
-
-                if(reply.Answer.Request!.ThroughAmbassador && AmbassadorPlayer is not null)
-                {
-                    // se la richiesta è fatta attraverso l'ambasciatore, anche lui annota le risposte
-                    AmbassadorPlayer.ManageAnswer(this, reply.Answer);
-                }
-
-                CurrentPlayer.ManageAnswer(this, reply.Answer);
-
-                MoveDecision dismissDecision = CurrentPlayer.DismissPawn(this, req.Key);
-                if (dismissDecision.NeedsInput)
-                {
-                    Events.Enqueue(new DismissPawnInputRequestedEvent(CurrentPlayer, req.Key));
-
-                    // Mettiti in ascolto sui comandi per un comando di tipo MoveCommand e riassegna la moveDecision
-                    // dismissDecision = command...
-                }
-
-                foreach (Move m in dismissDecision.Moves)
-                {
-                    SubmitMove(m);
-                }
-            }
-        }
-
         public void SubmitMove(Move move)
         {
             if (move is null)
@@ -732,7 +600,16 @@ namespace Inkognito.Core
             }
             while (Players[CurrentPlayerIndex] is null);
             TurnNumber++;
-            InternalStateMachine.Fire(StateTrigger.EndTurn);
+
+            if(TurnNumber < MAX_TURNS)
+            {
+                InternalStateMachine.Fire(StateTrigger.EndTurn);
+            }
+            else 
+            {
+                Events.Enqueue(new MaxTurnsReachedEvent(MAX_TURNS));
+                InternalStateMachine.Fire(StateTrigger.EndGame);
+            }
         }
 
         private Pawn[] CreatePawns(PlayerColor color, Random random)
