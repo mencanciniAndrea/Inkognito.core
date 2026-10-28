@@ -73,13 +73,15 @@ namespace Inkognito.Core
 
         internal Board Clone()
         {
-            List<Pawn> pawns = new List<Pawn>();
-            var ambassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, CellsById[33]);
+            List<Pawn> pawns = new();
+            Pawn ambassadorPawn = new (PlayerColor.Black, Disguise.Ambassador, AmbassadorPawn.Position);
             foreach (var pawn in Pawns)
             {
                 pawns.Add(new Pawn(pawn.Color, pawn.Disguise, CellsById[pawn.Position.Id]));
-                if (pawn == AmbassadorPawn)
+                if (pawn.Disguise == Disguise.Ambassador)
+                {
                     ambassadorPawn = pawns.Last();
+                }
             }
 
             return new Board(CellsById.Values.ToList(),

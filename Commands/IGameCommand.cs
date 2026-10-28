@@ -6,6 +6,6 @@ namespace Inkognito.Core.Commands
 {
     public interface IGameCommand
     {
-        
+        public void Execute(GameState g);
     }
 }

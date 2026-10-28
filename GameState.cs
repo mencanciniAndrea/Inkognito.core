@@ -27,7 +27,7 @@ namespace Inkognito.Core
 
         public List<MoveIndication> AvailableMoves { get; private set; } = new();
 
-        public IReadOnlyList<Move> CurrentPlayersMoves { get; set; }
+        public IReadOnlyList<Move>? CurrentPlayersMoves { get; set; }
 
         public readonly ProphecyPhantom prophecyPhantom;
         public Board Board { get; }
@@ -58,7 +58,7 @@ namespace Inkognito.Core
         public InformationReplyDecision? CurrentAnswer { get; private set; }
         public bool MissionAccepted { get; private set; }
 
-        private StateMachine<GameInternalState, StateTrigger> InternalStateMachine;
+        internal StateMachine<GameInternalState, StateTrigger> InternalStateMachine;
         private InformationRequestDecision? CurrentPlayerQuery;
         private Player? DeclaredPartner;
 
@@ -117,7 +117,7 @@ namespace Inkognito.Core
             AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
 
             Board.AmbassadorPawn = AmbassadorPawn;
-            List<Pawn> pawns = new() { };
+            List<Pawn> pawns = new();
 
             var players = new Player?[playerNames.Length];
             CreatePlayers(playerNames, random, identities, disguises, missions, colors, pawns, players);
@@ -125,7 +125,7 @@ namespace Inkognito.Core
             PlayersByColor = Players.Where(p => p != null).ToDictionary(p => p!.Color, p => p!);
             PlayersByIdentity = Players.Where(p => p != null).ToDictionary(p => p!.Identity, p => p!);
 
-            if (PlayersByColor.TryGetValue(PlayerColor.Black, out var blackPlayer) && blackPlayer == null)
+            if (!PlayersByColor.TryGetValue(PlayerColor.Black, out var blackPlayer))
             {
                 pawns.Add(AmbassadorPawn);
             }
@@ -160,13 +160,9 @@ namespace Inkognito.Core
                         {
                             switch (command)
                             {
-                                case StartGameCommand startGameCommand:
-                                    this.StartGame();
-                                    break;
                                 case IGameCommand gameCommand:
-                                    throw new ArgumentException($"Comando non implementato: {command.GetType().Name}");
                                     // Esegui il comando specifico
-                                    // gameCommand.Execute(this);
+                                    gameCommand.Execute(this);
                                     break;
                                 default:
                                     throw new ArgumentException($"Comando sconosciuto: {command.GetType().Name}");
@@ -315,7 +311,7 @@ namespace Inkognito.Core
 
         private void OnGameStarted()
         {
-            Events.Enqueue(new GameStartedEvent());
+            Events.Enqueue(new GameStartedEvent(Board.Pawns));
         }
 
         private void EvaluateMissionCompleted()
@@ -403,7 +399,7 @@ namespace Inkognito.Core
             CurrentAnswer = null;
             foreach (var info in CurrentPlayerQuery!.InfoToAsk)
             {
-                var otherPlayer = PlayersByColor[info.Key.Color];
+                var otherPlayer = PlayersByColor[info.Value.Receiver];
                 CurrentAnswer = otherPlayer.AnswerTo(info.Value);
 
                 Console.Out.WriteLine($"{CurrentAnswer.Answer}");
@@ -423,7 +419,7 @@ namespace Inkognito.Core
 
         private void OnApplyMoves()
         {
-            foreach(Move m in CurrentPlayersMoves)
+            foreach(Move m in CurrentPlayersMoves!)
             {
                 SubmitMove(m);
                 AvailableMoves.FindLast(p => p.Move == m.MoveTypeConsumed).IsConsumed = true;
@@ -621,9 +617,6 @@ namespace Inkognito.Core
         private Pawn[] CreatePawns(PlayerColor color, Random random)
         {
             // check inutile, ma lo tengo per sicurezza
-            if (color == PlayerColor.Black)
-                return new[] { new Pawn(color, Disguise.Ambassador, Board.CellsById[33]) };
-
             int[] cellIds = color switch
             {
                 PlayerColor.Red => new[] { 9, 49, 44, 24 },

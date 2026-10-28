@@ -11,6 +11,11 @@ namespace Inkognito.Core.Commands
         {
         }
 
+        public void Execute(GameState g)
+        {
+            g.StartGame();
+        }
+
         public override string ToString()
         {
             return "StartGameCommand: Start the game.";
