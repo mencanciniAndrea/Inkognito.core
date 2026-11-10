@@ -102,13 +102,20 @@ namespace Inkognito.Core
                 var pawnsOnCell = gameBoard.GetPawnsOnCell(targetCell);
 
                 bool cellIsEmpty = pawnsOnCell.Count == 0;
-                bool cellHasOnlyOnePawn = pawnsOnCell.Count == 1;
-                var pawnOnCell = pawnsOnCell[0];
-                bool pawnIsCurrentPlayerPawn = pawnOnCell.Color == currentPlayer.Color;
 
-                if(cellIsEmpty || cellHasOnlyOnePawn && pawnIsCurrentPlayerPawn)
+                if(cellIsEmpty)
                 {
                     moves.Add(new Move(pawn, targetCell, MoveType.AnotherPlayerPawn));
+                }
+                else
+                {
+                    bool cellHasOnlyOnePawn = pawnsOnCell.Count == 1;
+                    var pawnOnCell = pawnsOnCell[0];
+                    bool pawnIsCurrentPlayerPawn = pawnOnCell.Color == currentPlayer.Color;
+                    if(cellHasOnlyOnePawn && pawnIsCurrentPlayerPawn)
+                    {
+                        moves.Add(new Move(pawn, targetCell, MoveType.AnotherPlayerPawn));
+                    }
                 }
             }
 

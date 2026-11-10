@@ -12,6 +12,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Inkognito.Core
 {
@@ -61,6 +62,121 @@ namespace Inkognito.Core
         internal StateMachine<GameInternalState, StateTrigger> InternalStateMachine;
         private InformationRequestDecision? CurrentPlayerQuery;
         private Player? DeclaredPartner;
+
+        public GameState(Ruleset rs, Player[] playersToBeInitialized, int seed)
+        {
+            Seed = seed;
+            Random random = new (seed);
+
+            // Inizializzazione dei giocatori
+            var identities = new List<Identity> { Identity.F, Identity.B, Identity.X, Identity.Z };
+            var disguises = new List<Disguise> { Disguise.Tall, Disguise.Thin, Disguise.Fat, Disguise.Small };
+            var missions = new List<MissionPart> { MissionPart.Alfa, MissionPart.Bravo, MissionPart.Charlie, MissionPart.Delta };
+
+            var colors = new[]
+            {
+                PlayerColor.Red,
+                PlayerColor.Blue,
+                PlayerColor.Green,
+                PlayerColor.Yellow,
+                PlayerColor.Black
+            };
+
+            Board = Board.LoadDefault();
+
+            AmbassadorPawn = new Pawn(PlayerColor.Black, Disguise.Ambassador, Board.CellsById[33]);
+
+            Board.AmbassadorPawn = AmbassadorPawn;
+            List<Pawn> pawns = new();
+
+            ActivePlayers = 0;
+            foreach (Player p in playersToBeInitialized)
+            {
+                ActivePlayers++;
+                if(p.Color == PlayerColor.Black)
+                {
+                    AmbassadorPlayer = p;
+                    AmbassadorPlayer.Identity = Identity.A;
+                    AmbassadorPlayer.Disguise = Disguise.Ambassador;
+                    AmbassadorPlayer.Mission = MissionPart.FindAllIdentities;
+                    AmbassadorPlayer.Pawns = Array.AsReadOnly(new[] { AmbassadorPawn });
+                    AmbassadorPlayer.Random = random;
+                }
+                else
+                {
+                    p.Identity = Draw(identities, random);
+                    p.Disguise = Draw(disguises, random);
+                    p.Mission = Draw(missions, random);
+                    p.Pawns = Array.AsReadOnly(CreatePawns(p.Color, random));
+                    p.Random = random;
+                }
+                pawns.AddRange(p.Pawns);
+            }
+
+            foreach (Player? p in playersToBeInitialized)
+            {
+                p.InitMemory(new(playersToBeInitialized));
+            }
+
+            Players = Array.AsReadOnly(playersToBeInitialized);
+            PlayersByColor = Players.Where(p => p != null).ToDictionary(p => p!.Color, p => p!);
+            PlayersByIdentity = Players.Where(p => p != null).ToDictionary(p => p!.Identity, p => p!);
+
+            if (!PlayersByColor.TryGetValue(PlayerColor.Black, out var blackPlayer))
+            {
+                pawns.Add(AmbassadorPawn);
+            }
+
+            Board.Pawns = pawns;
+
+            // Creazione del ProphecyPhantom
+            prophecyPhantom = new ProphecyPhantom(random, rs);
+
+            // Scelta del giocatore che inizia il turno: tra i posti occupati, uno a caso.
+
+            var occupiedSlots = Enumerable.Range(0, Players.Count)
+                .Where(index => Players[index] is not null).ToArray();
+
+            CurrentPlayerIndex = occupiedSlots[random.Next(occupiedSlots.Length)];
+
+            //-----------------------------------------------------------------
+            //
+            // SETUP INTERNAL STATE MACHINE
+            //
+            //-----------------------------------------------------------------
+
+            InternalStateMachine = SetupStateMachine();
+
+            _gameTask = Task.Run(async () =>
+            {
+                while (!GameOver)
+                {
+                    if (Commands.TryDequeue(out var command))
+                    {
+                        try
+                        {
+                            switch (command)
+                            {
+                                case IGameCommand gameCommand:
+                                    // Esegui il comando specifico
+                                    gameCommand.Execute(this);
+                                    break;
+                                default:
+                                    throw new ArgumentException($"Comando sconosciuto: {command.GetType().Name}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.Error.WriteLine($"Errore durante l'esecuzione del comando {command}: {ex}");
+                        }
+                    }
+                    else
+                    {
+                        await Task.Delay(10); // Attendere un breve periodo prima di controllare nuovamente la coda dei comandi
+                    }
+                }
+            });
+        }
 
         public GameState(params string?[] playerNames)
             : this(playerNames, GenerateSeed())
@@ -464,18 +580,6 @@ namespace Inkognito.Core
         public void StartGame()
         {
             InternalStateMachine.Fire(StateTrigger.StartGame);
-
-            /*
-
-            while(!GameOver)
-            {
-                //TODO sostituire con PlayTurn() una volta che ci sono tutti i comandi e gli eventi a disposizione
-                PlayTurnOldStyle();
-                
-                AdvanceTurn();
-            }
-
-            */
         }
 
         private void DrawMoves()

@@ -3,6 +3,7 @@ using Inkognito.Core.Decisions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 
 namespace Inkognito.Core
@@ -15,17 +16,38 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
-        private readonly Random _random;
+        public Random Random { get; set; }
 
-        public string Name { get; }
-        public PlayerType Type { get; internal set; } = PlayerType.Human;
-        public PlayerColor Color { get; }
-        public Identity Identity { get; }
-        public Disguise Disguise { get; }
-        public MissionPart Mission { get; }
-        public IReadOnlyList<Pawn> Pawns { get; }
+        public string Name { get; set; }
+        public PlayerType Type { get; set; }
+        public PlayerColor Color { get; set; }
+        private Identity _identity;
+        public Identity Identity { 
+            get => _identity;
+            set
+            {
+                _identity = value;
+                if (_identity == Identity.A)
+                {
+                    MissionToComplete = Inkognito.Core.Mission.GetAmbassadorMission();
+                }
+            }
+        }
+        public Disguise Disguise { get; set; }
+        public MissionPart Mission { get; set; }
+        private IReadOnlyList<Pawn> _pawns;
 
-        public Dictionary <Disguise, Pawn> PawnsByDisguise { get; }
+        public IReadOnlyList<Pawn> Pawns
+        {
+            get => _pawns;
+            set
+            {
+                _pawns = value;
+                PawnsByDisguise = value.ToDictionary(p => p.Disguise, p => p);
+            }
+        }
+
+        public Dictionary <Disguise, Pawn> PawnsByDisguise { get; private set; }
 
         public IReadOnlyList<MoveType> AvailableMoves { get; private set; } = Array.Empty<MoveType>();
 
@@ -64,6 +86,23 @@ namespace Inkognito.Core
         //
         //----------------------------------------------------------------------
 
+        public Player()
+        {
+            Random = new Random();
+            Name = "Uninitialized Player";
+            Type = PlayerType.CPU;
+            Color = PlayerColor.Red;
+            Identity = Identity.F;
+            Disguise = Disguise.Tall;
+            Mission = MissionPart.Alfa;
+            Pawns = Array.AsReadOnly(new Pawn[0]);
+            PawnsByDisguise = new Dictionary<Disguise, Pawn>();
+            Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
+            CurrentObjective = PlayerObjective.FIND_PARTNER;
+            MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
+            MyPartner = null;
+        }
+
         internal Player(string name, PlayerColor color, Identity identity, Disguise disguise, MissionPart mission, Pawn[] pawns, Random r)
         {
             Name = name;
@@ -74,7 +113,7 @@ namespace Inkognito.Core
             Pawns = Array.AsReadOnly(pawns);
             PawnsByDisguise = pawns.ToDictionary(p => p.Disguise, p => p);
             Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
-            _random = r;
+            Random = r;
             CurrentObjective = PlayerObjective.FIND_PARTNER;
             MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
             MyPartner = null;
@@ -191,12 +230,12 @@ namespace Inkognito.Core
             {
                 return new InformationReplyDecision(new PlayerAnswer(), true);
             }
-            return new InformationReplyDecision(Brain.ReplyToRequest(this, req, Memory!, _random), false);
+            return new InformationReplyDecision(Brain.ReplyToRequest(this, req, Memory!, Random), false);
         }
         public PlayerAnswer Ask(PlayerInfoRequest req)
         {
             // Devo dare una risposta... che gli dico? Cervello, aiutami tu...
-            return Brain.ReplyToRequest(this, req, Memory!, _random);
+            return Brain.ReplyToRequest(this, req, Memory!, Random);
         }
 
         /// <summary>
@@ -272,10 +311,10 @@ namespace Inkognito.Core
                     // scegli il giocatore a cui chiedere, tra quelli disponibili (che non sia black!
                     Player?[] availablePlayers = gameState.Players.Where(p => p != null && p.Color != PlayerColor.Black && p.Color != this.Color).ToArray();
 
-                    pColorToAsk = Brain.WhoToAskInfoBetween(availablePlayers!, _random);
+                    pColorToAsk = Brain.WhoToAskInfoBetween(availablePlayers!, Random);
                 }
 
-                var reqType = Brain.WhatToRequestTo(pColorToAsk, Memory!, _random);
+                var reqType = Brain.WhatToRequestTo(pColorToAsk, Memory!, Random);
 
                 // 3. ask information to the player (crea la request e mandagliela)
                 PlayerInfoRequest request = new(Color, pColorToAsk, reqType, p.Color == PlayerColor.Black);
