@@ -9,9 +9,9 @@ namespace Inkognito.Core
     public class Mission
     {
         public String Description{ get; private set; }
-        public IReadOnlyList<VictoryCondition> CompleteConditions { get; private set; }
+        public IReadOnlyList<CompleteCondition> CompleteConditions { get; private set; }
 
-        public Mission(String d, List<VictoryCondition> v)
+        public Mission(String d, List<CompleteCondition> v)
         {
             Description = d;
             CompleteConditions = v;
@@ -81,11 +81,11 @@ namespace Inkognito.Core
 
             if(F != null && B != null)
             {
-                return GetMissionForFB(F.Mission, B.Mission, g);
+                return GetMissionForFB(F.MissionPart, B.MissionPart, g);
             }
             else if(X != null && Z != null)
             {
-                return GetMissionForZX(Z.Mission, X.Mission, g);
+                return GetMissionForZX(Z.MissionPart, X.MissionPart, g);
             }
             
             
@@ -97,11 +97,11 @@ namespace Inkognito.Core
             Pawn p = g.GetPawnOf(id) ?? throw new ArgumentNullException($"{id} non può essere null a questo punto!");
             return id switch
             {
-                Identity.F => new Mission("Andate alla casella 5", new List<VictoryCondition> { new(p, TargetPosition.POSITION_5) }),
-                Identity.B => new Mission("Andate alla casella 1", new List<VictoryCondition> { new(p, TargetPosition.POSITION_1) }),
-                Identity.X => new Mission("Andate alla casella 6", new List<VictoryCondition> { new(p, TargetPosition.POSITION_6) }),
-                Identity.Z => new Mission("Andate alla casella 4", new List<VictoryCondition> { new(p, TargetPosition.POSITION_4) }),
-                _ => new Mission("Unkown", new List<VictoryCondition> { }),
+                Identity.F => new Mission("Andate alla casella 5", new List<CompleteCondition> { new(p, TargetPosition.POSITION_5) }),
+                Identity.B => new Mission("Andate alla casella 1", new List<CompleteCondition> { new(p, TargetPosition.POSITION_1) }),
+                Identity.X => new Mission("Andate alla casella 6", new List<CompleteCondition> { new(p, TargetPosition.POSITION_6) }),
+                Identity.Z => new Mission("Andate alla casella 4", new List<CompleteCondition> { new(p, TargetPosition.POSITION_4) }),
+                _ => new Mission("Unkown", new List<CompleteCondition> { }),
             };
         }
 
@@ -116,7 +116,7 @@ namespace Inkognito.Core
                         MissionPart.Bravo => new Mission("Andate su X con qualunque pedina", F_A_B_B(g)),
                         MissionPart.Charlie => new Mission("Portate F sulla casella 5 (17)", F_A_B_C(g)),
                         MissionPart.Delta => new Mission("Andate su Z con qualunque pedina", F_A_B_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Bravo:
                     return mB switch
@@ -124,7 +124,7 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("Andate su X con qualunque pedina", F_B_B_A(g)),
                         MissionPart.Charlie => new Mission("Andate su A con qualunque pedina", F_B_B_C(g)),
                         MissionPart.Delta => new Mission("Portate B sulla casella 1", F_B_B_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Charlie:
                     return mB switch
@@ -132,7 +132,7 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("Portate F sulla casella 7 (41)", F_C_B_A(g)),
                         MissionPart.Bravo => new Mission("Andate su A con qualunque pedina", F_C_B_B(g)),
                         MissionPart.Delta => new Mission("Portate A all'Ambasciata", F_C_B_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Delta:
                     return mB switch
@@ -140,10 +140,10 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("Andate su Z con qualunque pedina", F_D_B_A(g)),
                         MissionPart.Bravo => new Mission("portate F su B o B su F", F_D_B_B(g)),
                         MissionPart.Charlie => new Mission("portate A alla casella 8 (45)", F_D_B_C(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 default:
-                    return new Mission("Mission Unknown", new List<VictoryCondition>());
+                    return new Mission("Mission Unknown", new List<CompleteCondition>());
             }
         }
         public static Mission GetMissionForZX(MissionPart mZ, MissionPart mX, GameState g)
@@ -156,7 +156,7 @@ namespace Inkognito.Core
                         MissionPart.Bravo => new Mission("Andate su A con qualunque pedina", Z_A_X_B(g)),
                         MissionPart.Charlie => new Mission("Andate su B con qualunque pedina", Z_A_X_C(g)),
                         MissionPart.Delta => new Mission("Portate Z su A o A su Z", Z_A_X_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Bravo:
                     return mX switch
@@ -164,7 +164,7 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("Andate su A con qualunque pedina", Z_B_X_A(g)),
                         MissionPart.Charlie => new Mission("portate Z su X o X su Z", Z_B_X_C(g)),
                         MissionPart.Delta => new Mission("Andate su F con qualunque pedina", Z_B_X_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Charlie:
                     return mX switch
@@ -172,7 +172,7 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("Andate su B con qualunque pedina", Z_C_X_A(g)),
                         MissionPart.Bravo => new Mission("portate Z su 4 (56)", Z_C_X_B(g)),
                         MissionPart.Delta => new Mission("portate X su 2 (23)", Z_C_X_D(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 case MissionPart.Delta:
                     return mX switch
@@ -180,20 +180,20 @@ namespace Inkognito.Core
                         MissionPart.Alfa => new Mission("portate A su 3 (38)", Z_D_X_A(g)),
                         MissionPart.Bravo => new Mission("Andate su F con qualunque pedina", Z_B_X_D(g)),
                         MissionPart.Charlie => new Mission("portate X su 6 (4)", Z_D_X_C(g)),
-                        _ => new Mission("Mission Unknown", new List<VictoryCondition>()),
+                        _ => new Mission("Mission Unknown", new List<CompleteCondition>()),
                     };
                 default:
-                    return new Mission("Mission Unknown", new List<VictoryCondition>());
+                    return new Mission("Mission Unknown", new List<CompleteCondition>());
             }    
         }
-        private static List<VictoryCondition> F_B_B_A(GameState g)
+        private static List<CompleteCondition> F_B_B_A(GameState g)
         {
             return F_A_B_B(g);
         }
 
-        private static List<VictoryCondition> F_A_B_B(GameState g)
+        private static List<CompleteCondition> F_A_B_B(GameState g)
         {
-            List<VictoryCondition> vc = new ();
+            List<CompleteCondition> vc = new ();
 
             TargetPosition t = TargetPosition.X_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.X);
@@ -203,34 +203,34 @@ namespace Inkognito.Core
             Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
             foreach(Pawn pa in F.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
             foreach(Pawn pa in B.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             return vc;
         }
 
-        private static List<VictoryCondition> F_A_B_C(GameState g)
+        private static List<CompleteCondition> F_A_B_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(F, TargetPosition.POSITION_5));
+            vc.Add(new CompleteCondition(F, TargetPosition.POSITION_5));
             return vc;
         }
 
-        private static List<VictoryCondition> F_D_B_A(GameState g)
+        private static List<CompleteCondition> F_D_B_A(GameState g)
         {
             return F_A_B_D(g);
         }
 
-        private static List<VictoryCondition> F_A_B_D(GameState g)
+        private static List<CompleteCondition> F_A_B_D(GameState g)
         {
-            List<VictoryCondition> vc = new ();
+            List<CompleteCondition> vc = new ();
 
             TargetPosition t = TargetPosition.Z_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.Z);
@@ -240,13 +240,13 @@ namespace Inkognito.Core
             Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
             foreach (Pawn pa in F.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
             foreach (Pawn pa in B.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             return vc;
@@ -257,7 +257,7 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> F_C_B_B(GameState g)
+        private static List<CompleteCondition> F_C_B_B(GameState g)
         {
             return F_B_B_C(g);
         }
@@ -266,86 +266,86 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> F_B_B_C(GameState g)
+        private static List<CompleteCondition> F_B_B_C(GameState g)
         {
-            List<VictoryCondition> vc = new();
+            List<CompleteCondition> vc = new();
 
             Player F = g.PlayersByIdentity[Identity.F] ?? throw new ArgumentNullException("Il giocatore F non può essere null a questo punto!");
             foreach (Pawn pa in F.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                vc.Add(new CompleteCondition(pa, TargetPosition.A_POSITION));
             }
             Player B = g.PlayersByIdentity[Identity.B] ?? throw new ArgumentNullException("Il giocatore B non può essere null a questo punto!");
             foreach (Pawn pa in B.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                vc.Add(new CompleteCondition(pa, TargetPosition.A_POSITION));
             }
 
             return vc;
         }
 
-        private static List<VictoryCondition> F_B_B_D(GameState g)
+        private static List<CompleteCondition> F_B_B_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? B = g.GetPawnOf(Identity.B) ?? throw new ArgumentNullException("Il Pawn di B non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(B, TargetPosition.POSITION_1));
+            vc.Add(new CompleteCondition(B, TargetPosition.POSITION_1));
             return vc;
         }
 
-        private static List<VictoryCondition> F_C_B_A(GameState g)
+        private static List<CompleteCondition> F_C_B_A(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(F, TargetPosition.POSITION_7));
+            vc.Add(new CompleteCondition(F, TargetPosition.POSITION_7));
             return vc;
         }
 
-        private static List<VictoryCondition> F_C_B_D(GameState g)
+        private static List<CompleteCondition> F_C_B_D(GameState g)
         {
-            List<VictoryCondition> vc = new ();
+            List<CompleteCondition> vc = new ();
             Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
             if(g.AmbassadorPlayer == null)
             {
-                vc.Add(new VictoryCondition(A, TargetPosition.EMBASSY));
+                vc.Add(new CompleteCondition(A, TargetPosition.EMBASSY));
             }
             else
             {
                 Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
                 Pawn? B = g.GetPawnOf(Identity.B) ?? throw new ArgumentNullException("Il Pawn di B non può essere null a questo punto!");
 
-                vc.Add(new VictoryCondition(F, TargetPosition.EMBASSY));
-                vc.Add(new VictoryCondition(B, TargetPosition.EMBASSY));
+                vc.Add(new CompleteCondition(F, TargetPosition.EMBASSY));
+                vc.Add(new CompleteCondition(B, TargetPosition.EMBASSY));
             }
             
             return vc;
         }
 
-        private static List<VictoryCondition> F_D_B_B(GameState g)
+        private static List<CompleteCondition> F_D_B_B(GameState g)
         {
-            List<VictoryCondition> vc = new ();
+            List<CompleteCondition> vc = new ();
             Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentNullException("Il Pawn di F non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(F, TargetPosition.B_POSITION));
+            vc.Add(new CompleteCondition(F, TargetPosition.B_POSITION));
             return vc;
         }
 
-        private static List<VictoryCondition> F_D_B_C(GameState g)
+        private static List<CompleteCondition> F_D_B_C(GameState g)
         {
-            List<VictoryCondition> vc = new ();
+            List<CompleteCondition> vc = new ();
 
             // check: se il giocatore ambasciatore è null
             if (g.GetPlayerByColor(PlayerColor.Black) == null)
             {
                 Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(A, TargetPosition.POSITION_8));
+                vc.Add(new CompleteCondition(A, TargetPosition.POSITION_8));
             }
             else
             {
                 // variante in 5: l'ambasciatore è incontrollabile, quindi o F o B devono andare alla casella 8
                 Pawn? F = g.GetPawnOf(Identity.F) ?? throw new ArgumentException("Pawn di F non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(F, TargetPosition.POSITION_8));
+                vc.Add(new CompleteCondition(F, TargetPosition.POSITION_8));
 
                 Pawn? B = g.GetPawnOf(Identity.B) ?? throw new ArgumentException("Pawn di B non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(B, TargetPosition.POSITION_8));
+                vc.Add(new CompleteCondition(B, TargetPosition.POSITION_8));
             }
             
             return vc;
@@ -356,7 +356,7 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> Z_B_X_A(GameState g)
+        private static List<CompleteCondition> Z_B_X_A(GameState g)
         {
             return Z_A_X_B(g);
         }
@@ -366,20 +366,20 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> Z_A_X_B(GameState g)
+        private static List<CompleteCondition> Z_A_X_B(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
 
             Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
             foreach(Pawn pa in X.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                vc.Add(new CompleteCondition(pa, TargetPosition.A_POSITION));
             }
             
             Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
             foreach (Pawn pa in Z.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, TargetPosition.A_POSITION));
+                vc.Add(new CompleteCondition(pa, TargetPosition.A_POSITION));
             }
 
             return vc;
@@ -390,7 +390,7 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> Z_C_X_A(GameState g)
+        private static List<CompleteCondition> Z_C_X_A(GameState g)
         {
             return Z_A_X_C(g);
         }
@@ -400,9 +400,9 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition>  Z_A_X_C(GameState g)
+        private static List<CompleteCondition>  Z_A_X_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
 
             TargetPosition t = TargetPosition.B_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.B);
@@ -412,31 +412,31 @@ namespace Inkognito.Core
             Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
             foreach(Pawn pa in X.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
             Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
             foreach (Pawn pa in Z.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             return vc;
         }
 
-        private static List<VictoryCondition> Z_A_X_D(GameState g)
+        private static List<CompleteCondition> Z_A_X_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? Z = g.GetPawnOf(Identity.Z) ?? throw new ArgumentNullException("Il Pawn di Z non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(Z, TargetPosition.A_POSITION));
+            vc.Add(new CompleteCondition(Z, TargetPosition.A_POSITION));
             return vc;
         }
 
         
-        private static List<VictoryCondition> Z_B_X_C(GameState g)
+        private static List<CompleteCondition> Z_B_X_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? Z = g.GetPawnOf(Identity.Z) ?? throw new ArgumentNullException("Il Pawn di Z non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(Z, TargetPosition.X_POSITION));
+            vc.Add(new CompleteCondition(Z, TargetPosition.X_POSITION));
             return vc;
         }
 
@@ -446,7 +446,7 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> Z_D_X_B(GameState g)
+        private static List<CompleteCondition> Z_D_X_B(GameState g)
         {
             return Z_B_X_D(g);
         }
@@ -456,9 +456,9 @@ namespace Inkognito.Core
         /// </summary>
         /// <param name="g"></param>
         /// <returns></returns>
-        private static List<VictoryCondition> Z_B_X_D(GameState g)
+        private static List<CompleteCondition> Z_B_X_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
 
             TargetPosition t = TargetPosition.F_POSITION;
             Pawn? xPawn = g.GetPawnOf(Identity.F);
@@ -468,68 +468,68 @@ namespace Inkognito.Core
             Player Z = g.PlayersByIdentity[Identity.Z] ?? throw new ArgumentNullException("Il giocatore Z non può essere null a questo punto!");
             foreach(Pawn pa in Z.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             Player X = g.PlayersByIdentity[Identity.X] ?? throw new ArgumentNullException("Il giocatore X non può essere null a questo punto!");
             foreach (Pawn pa in X.Pawns)
             {
-                vc.Add(new VictoryCondition(pa, t));
+                vc.Add(new CompleteCondition(pa, t));
             }
 
             return vc;
         }
 
-        private static List<VictoryCondition> Z_C_X_B(GameState g)
+        private static List<CompleteCondition> Z_C_X_B(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? Z = g.GetPawnOf(Identity.Z) ?? throw new ArgumentNullException("Il Pawn di Z non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(Z, TargetPosition.POSITION_4));
+            vc.Add(new CompleteCondition(Z, TargetPosition.POSITION_4));
             return vc;
         }
 
-        private static List<VictoryCondition> Z_C_X_D(GameState g)
+        private static List<CompleteCondition> Z_C_X_D(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
             Pawn? X = g.GetPawnOf(Identity.X) ?? throw new ArgumentNullException("Il Pawn di Z non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(X, TargetPosition.POSITION_2));
+            vc.Add(new CompleteCondition(X, TargetPosition.POSITION_2));
             return vc;
         }
 
-        private static List<VictoryCondition> Z_D_X_A(GameState g)
+        private static List<CompleteCondition> Z_D_X_A(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
+            List<CompleteCondition> vc = new List<CompleteCondition>();
 
             // check: se il giocatore ambasciatore è null
             if (g.GetPlayerByColor(PlayerColor.Black) == null)
             {
                 Pawn? A = g.AmbassadorPawn ?? throw new ArgumentNullException("AmbassadorPawn non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(A, TargetPosition.POSITION_3));
+                vc.Add(new CompleteCondition(A, TargetPosition.POSITION_3));
             }
             else
             {
                 // variante in 5: l'ambasciatore è incontrollabile, quindi o F o B devono andare alla casella 8
                 Pawn? Z = g.GetPawnOf(Identity.Z) ?? throw new ArgumentException("Pawn di Z non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(Z, TargetPosition.POSITION_3));
+                vc.Add(new CompleteCondition(Z, TargetPosition.POSITION_3));
 
                 Pawn? X = g.GetPawnOf(Identity.X) ?? throw new ArgumentException("Pawn di X non può essere null a questo punto!");
-                vc.Add(new VictoryCondition(X, TargetPosition.POSITION_3));
+                vc.Add(new CompleteCondition(X, TargetPosition.POSITION_3));
             }
 
             return vc;
         }
 
-        private static List<VictoryCondition>  Z_D_X_C(GameState g)
+        private static List<CompleteCondition>  Z_D_X_C(GameState g)
         {
-            List<VictoryCondition> vc = new List<VictoryCondition>();
-            Pawn? X = g.GetPawnOf(Identity.X) ?? throw new ArgumentNullException("Il Pawn di Z non può essere null a questo punto!");
-            vc.Add(new VictoryCondition(X, TargetPosition.POSITION_6));
+            List<CompleteCondition> vc = new ();
+            Pawn? X = g.GetPawnOf(Identity.X) ?? throw new ArgumentNullException("Il Pawn di X non può essere null a questo punto!");
+            vc.Add(new CompleteCondition(X, TargetPosition.POSITION_6));
             return vc;
         }
 
-        public bool VerifyVictoryConditions(GameState g)
+        public bool IsCompleted(GameState g)
         {
-            foreach(VictoryCondition vc in CompleteConditions)
+            foreach(CompleteCondition vc in CompleteConditions)
             {
                 if (vc.IsVerified(g)) return true;
             }

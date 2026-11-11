@@ -296,7 +296,7 @@ namespace Inkognito.Core
         public override string ToString()
         {
             const int columnWidth = 10;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new ();
             sb.AppendLine($"Knows About {About}:");
             sb.AppendLine($"{AssuredIdentity}, {AssuredDisguise}, is my partner: {IsMyPartner}; Mission: {AssignedMission}");
 

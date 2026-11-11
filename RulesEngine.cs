@@ -13,19 +13,22 @@ namespace Inkognito.Core
 
         public static Identity GetPartnerOf(Identity id)
         {
-            if (id == Identity.A) return Identity.DON_T_KNOW;
-            return id == Identity.F ? Identity.B
-                                : id == Identity.B ? Identity.F
-                                : id == Identity.X ? Identity.Z
-                                : id == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
+            return id == Identity.A ? Identity.NOBODY : 
+                id == Identity.F ? Identity.B :
+                id == Identity.B ? Identity.F :
+                id == Identity.X ? Identity.Z :
+                id == Identity.Z ? Identity.X :
+                Identity.DON_T_KNOW;
         }
 
         public static Identity GetMyPartnerIdentity(Player me)
         {
-            return me.Identity == Identity.F ? Identity.B
-                                : me.Identity == Identity.B ? Identity.F
-                                : me.Identity == Identity.X ? Identity.Z
-                                : me.Identity == Identity.Z ? Identity.X : Identity.DON_T_KNOW;
+            return me.Identity == Identity.A ? Identity.NOBODY : 
+                me.Identity == Identity.F ? Identity.B :
+                me.Identity == Identity.B ? Identity.F :
+                me.Identity == Identity.X ? Identity.Z :
+                me.Identity == Identity.Z ? Identity.X : 
+                Identity.DON_T_KNOW;
         }
         private static IReadOnlyList<Move> GetLegalMovesCurrentPlayerPawn(Pawn pawn, MoveType moveType, Board gameBoard)
         {

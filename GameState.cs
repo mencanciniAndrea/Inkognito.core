@@ -98,7 +98,7 @@ namespace Inkognito.Core
                     AmbassadorPlayer = p;
                     AmbassadorPlayer.Identity = Identity.A;
                     AmbassadorPlayer.Disguise = Disguise.Ambassador;
-                    AmbassadorPlayer.Mission = MissionPart.FindAllIdentities;
+                    AmbassadorPlayer.MissionPart = MissionPart.FindAllIdentities;
                     AmbassadorPlayer.Pawns = Array.AsReadOnly(new[] { AmbassadorPawn });
                     AmbassadorPlayer.Random = random;
                 }
@@ -106,7 +106,7 @@ namespace Inkognito.Core
                 {
                     p.Identity = Draw(identities, random);
                     p.Disguise = Draw(disguises, random);
-                    p.Mission = Draw(missions, random);
+                    p.MissionPart = Draw(missions, random);
                     p.Pawns = Array.AsReadOnly(CreatePawns(p.Color, random));
                     p.Random = random;
                 }
@@ -693,6 +693,8 @@ namespace Inkognito.Core
         /// <summary>Avanza al prossimo posto occupato; non verifica le condizioni di fine turno.</summary>
         public void AdvanceTurn()
         {
+            Console.Write(CurrentPlayer.Memory);
+
             if (CurrentPlayer.WantToDeclareMissionCompleted(this))
             {
                 InternalStateMachine.Fire(StateTrigger.DeclareMissionCompleted);
@@ -810,7 +812,7 @@ namespace Inkognito.Core
             else
             {
                 Mission m = Mission.GetMissionForPlayerAlone(lonely, this);
-                if (m.VerifyVictoryConditions(this))
+                if (m.IsCompleted(this))
                 {
                     Console.Out.WriteLine($"Mission Completed! {whoDeclares.Name} wins, fleeing successfully!");
                     gameEndEvent = new GameEndedEvent(new () { whoDeclares });
@@ -859,7 +861,7 @@ namespace Inkognito.Core
             Player? realPartner = GetPlayerById(RulesEngine.GetPartnerOf(whoDeclares.Identity));
 
             Mission realMission = Mission.GetMission(whoDeclares, realPartner, this);
-            if (realMission.VerifyVictoryConditions(this))
+            if (realMission.IsCompleted(this))
             {
                 StringBuilder sb = new();
                 sb.Append("Mission Completed!");
@@ -882,7 +884,7 @@ namespace Inkognito.Core
             {
                 if (p == null) continue;
                 StringBuilder sb = new();
-                sb.Append($"{p.Name}, {p.Color}, {p.Identity}, {p.Disguise}, {p.Mission} - ");
+                sb.Append($"{p.Name}, {p.Color}, {p.Identity}, {p.Disguise}, {p.MissionPart} - ");
                 sb.AppendJoin(", ", p.Pawns);
                 Console.Out.WriteLine(sb);
             }

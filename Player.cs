@@ -29,12 +29,13 @@ namespace Inkognito.Core
                 _identity = value;
                 if (_identity == Identity.A)
                 {
-                    MissionToComplete = Inkognito.Core.Mission.GetAmbassadorMission();
+                    MissionToComplete = Mission.GetAmbassadorMission();
+                    MyPartnerIdentity = RulesEngine.GetMyPartnerIdentity(this);
                 }
             }
         }
         public Disguise Disguise { get; set; }
-        public MissionPart Mission { get; set; }
+        public MissionPart MissionPart { get; set; }
         private IReadOnlyList<Pawn> _pawns;
 
         public IReadOnlyList<Pawn> Pawns
@@ -56,7 +57,7 @@ namespace Inkognito.Core
         /// <summary>
         /// Questa è generale: data un'identità, si sa l'identità del partner. Solo che all'inizio del gioco non si sa quale giocatore è il partner.
         /// </summary>
-        private Identity MyPartnerIdentity { get; }
+        private Identity MyPartnerIdentity { get; set; }
 
         public Mission? MissionToComplete { get; set; }
 
@@ -94,7 +95,7 @@ namespace Inkognito.Core
             Color = PlayerColor.Red;
             Identity = Identity.F;
             Disguise = Disguise.Tall;
-            Mission = MissionPart.Alfa;
+            MissionPart = MissionPart.Alfa;
             Pawns = Array.AsReadOnly(new Pawn[0]);
             PawnsByDisguise = new Dictionary<Disguise, Pawn>();
             Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
@@ -109,7 +110,7 @@ namespace Inkognito.Core
             Color = color;
             Identity = identity;
             Disguise = disguise;
-            Mission = mission;
+            MissionPart = mission;
             Pawns = Array.AsReadOnly(pawns);
             PawnsByDisguise = pawns.ToDictionary(p => p.Disguise, p => p);
             Brain = new LazyBrain(); //TODO: non ci deve essere solo un LazyBrain!!!
@@ -276,7 +277,7 @@ namespace Inkognito.Core
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.AppendLine($"{Name}: {Type}, {Color}, {Identity}, {Disguise}, {Mission}");
+            sb.AppendLine($"{Name}: {Type}, {Color}, {Identity}, {Disguise}, {MissionPart}");
             
             sb.AppendJoin(",", Pawns);
             sb.AppendLine();

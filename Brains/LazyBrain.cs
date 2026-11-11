@@ -284,7 +284,7 @@ namespace Inkognito.Core.Brains
             
             if(pk.IsMyPartner == YES_OR_NO.YES)
             {
-                result.Answers.Add(new (InkognitoCardVisibility.SECRET, InkognitoCardType.MISSION, (int)me.Mission));
+                result.Answers.Add(new (InkognitoCardVisibility.SECRET, InkognitoCardType.MISSION, (int)me.MissionPart));
             }
 
             result.Request = request;
@@ -492,7 +492,7 @@ namespace Inkognito.Core.Brains
             bool result = false;
             if (m != null)
             {
-                if (m.VerifyVictoryConditions(gameState))
+                if (m.IsCompleted(gameState))
                 {
                     Console.Out.WriteLine($"{me.Name} sostiene Missione {m.Description} Compiuta");
                     result = true;
@@ -755,7 +755,7 @@ namespace Inkognito.Core.Brains
             {
                 if(brainOwner.MyPartner is not null)
                 {
-                    if(brainOwner.MyPartner.Mission != MissionPart.DON_T_KNOW)
+                    if(brainOwner.MyPartner.MissionPart != MissionPart.DON_T_KNOW)
                     {
                         brainOwner.MissionToComplete = Mission.GetMission(brainOwner, brainOwner.MyPartner, gameState);
                     }

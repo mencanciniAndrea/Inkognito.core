@@ -7,6 +7,8 @@ namespace Inkognito.Core
         B = 2,
         X = 3,
         Z = 4,
-        DON_T_KNOW = 5 // valore speciale valido solo per PlayerKnowledge
+        DON_T_KNOW = 5, // valore speciale valido solo per PlayerKnowledge
+        NOBODY = 6
+
     }
 }
