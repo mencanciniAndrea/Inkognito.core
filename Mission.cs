@@ -9,12 +9,12 @@ namespace Inkognito.Core
     public class Mission
     {
         public String Description{ get; private set; }
-        public IReadOnlyList<VictoryCondition> VictoryConditions { get; private set; }
+        public IReadOnlyList<VictoryCondition> CompleteConditions { get; private set; }
 
         public Mission(String d, List<VictoryCondition> v)
         {
             Description = d;
-            VictoryConditions = v;
+            CompleteConditions = v;
         }
 
         public static Mission GetAmbassadorMission()
@@ -529,7 +529,7 @@ namespace Inkognito.Core
 
         public bool VerifyVictoryConditions(GameState g)
         {
-            foreach(VictoryCondition vc in VictoryConditions)
+            foreach(VictoryCondition vc in CompleteConditions)
             {
                 if (vc.IsVerified(g)) return true;
             }
